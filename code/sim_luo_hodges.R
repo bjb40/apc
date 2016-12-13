@@ -5,6 +5,7 @@
 
 #clear cache
 rm(list=ls())
+source('config~.R')
 
 #@@
 #preliminaries
@@ -81,7 +82,7 @@ for(N in 1:100){
 #Save and export simulated data
 #####
 
-
+save(dats,file=paste0())
 
   
 #plot facets for drawn data of four scenarios (loess smoothing)
