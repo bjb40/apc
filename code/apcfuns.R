@@ -45,7 +45,9 @@ if(!is.na(winlength)){
   win=1:w
   breaks = r[1]-1
   for(i in 0:(ceiling(length(vec)/w)-1)){
-    breaks=append(breaks,vec[max(win+w*i)])
+    p.break=vec[max(win+w*i)]
+    if(is.na(p.break)){p.break=r[2]}
+    breaks=append(breaks,p.break)
   }
 }#end winlength 
 
@@ -80,6 +82,15 @@ scopedummy.window = function(w) {
   span=r[1]:r[2]
   f=cut(span,breaks=attr(w,'breaks'))
   return(f)
+}
+
+range=function(w){
+  UseMethod('range',w)
+}
+
+range.window = function(w){
+  #returns range object (from underlying continuous)
+  return(attr(w,'range'))
 }
 
 #ols funciton for estimating an apc model
@@ -135,13 +146,14 @@ apc_lm = function(formula,data,age,per,coh,windows) {
   if(missing(windows)){
     windows=list(age=0,period=0,cohort=0)
     
-    #id random constraint
-    #constr=function(var){
-    #    round(length(unique(var))/3)
-    #}
-    #windows$age=round(runif(1,range(data[,age])))
-    #windows$period=round(runif(1,3,max(data[,per])))
-    #windows$cohort=round(runif(1,3,max(data[,coh])))
+    #id maximum window for constraint(min is 3)
+    max_w=function(var){
+      r=range(var)
+      return(r[2]-r[1])
+      }
+    windows$age=round(runif(1,3,max_w(data[,age])))
+    windows$period=round(runif(1,3,max_w(data[,per])))
+    windows$cohort=round(runif(1,3,max_w(data[,coh])))
     
   }
   
@@ -154,19 +166,36 @@ apc_lm = function(formula,data,age,per,coh,windows) {
     c=window(data[,coh],winlength=windows$cohort)
   )
   
-  ndat=data
+
+  ndat=data[,!colnames(data) %in% c(age,per,coh)]
+  ndat=cbind(ndat,wins$a,wins$p,wins$c)
+  colnames(ndat)[-1:(3-ncol(ndat))] = c(age,per,coh)
   
+  blockdat=lapply(wins,scopedummy)
   
   #@@@@
   #estimate OLS model
   
+  results=lm(formula,data=ndat)
   
   #@@@@
   #prepare small block estimates
   
+  #x.per=blockdat$per
   
   #@@@@
   #prepare linear estimates(cubic)
+  
+  #@@@@
+  #return
+  
+  return(
+    list(
+      newdat=ndat,
+      blockdat=blockdat,
+      results=results
+    )
+  )
   
 }
 
