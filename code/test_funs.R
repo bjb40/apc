@@ -72,30 +72,7 @@ winlist = list(age=4,period=5,cohort=4)
 
 tst=apc_lm(y2~a+p+cohort,data=tdat,a='a',p='p')
 
-##need to incorprate these into the tests below
 
-b=coefficients(tst$results)
-  c.b = b [grepl('cohort|Intercept',names(b))]
-cov=vcov(tst$results)
-  c.cov = cov[grepl('cohort|Intercept',rownames(cov)),
-      grepl('cohort|Intercept',colnames(cov))]
-
-  
-
-predat=model.matrix(~.,data=as.data.frame(tst$blockdat$c))
-
-predict=predat %*% c.b
-
-#this is _assuming_ at default (left out) variables
-#should re-estimate based on means??
-
-v = predat %*% c.cov %*% t(predat)
-
-preds = data.frame(cohort=expand(tst$newdat$cohort),
-                   est=predict,
-                   se=sqrt(diag(v)))
-preds$up = preds$est+preds$se*1.96
-preds$down = preds$est-preds$se*1.96
 
 ####
 #plots -- not necessarily for functions
@@ -107,7 +84,9 @@ library(ggplot2)
 
 load(paste0(datdir,'luo_sim_fits.RData'))
 
-
+  preds=tst$block.eff[['cohort']]
+  preds$up=preds$est + 1.96*preds$se
+  preds$down=preds$est - 1.96*preds$se
   preds$actual=pltdat$s1[order(pltdat$cohort)]
   
 g=ggplot(preds,
@@ -127,3 +106,5 @@ print(
 )
 
 print(t.beta)
+
+

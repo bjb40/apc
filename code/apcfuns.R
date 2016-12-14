@@ -179,18 +179,46 @@ apc_lm = function(formula,data,age,per,coh,windows) {
   ndat=cbind(ndat,wins$a,wins$p,wins$c)
   colnames(ndat)[-1:(3-ncol(ndat))] = c(age,per,coh)
   
-  blockdat=lapply(wins,scopedummy)
+  blockdat=lapply(wins,scopedummy); names(blockdat)=c(age,per,coh)
   
   #@@@@
-  #estimate OLS model
+  #estimate OLS model based on window constraints
   
   results=lm(formula,data=ndat)
   
   #@@@@
   #prepare small block estimates
   
-  #x.per=blockdat$per
+  b=coefficients(results)
+  cov=vcov(results)
   
+  predat=lapply(blockdat,FUN=function(x) 
+    model.matrix(~.,data=as.data.frame(x)))
+
+  blockeff=list(beta=list(),cov=list())
+  predict=list(est=list(),cov=list())
+  beta.hat=list()
+
+  for(eff in c(age,per,coh)){
+     blockeff[['beta']][[eff]] = b [grepl(paste0(eff,'|Intercept'),names(b))]
+     blockeff[['cov']][[eff]] = cov[grepl(paste0(eff,'|Intercept'),rownames(cov)),
+            grepl(paste0(eff,'|Intercept'),colnames(cov))]
+  
+  predict[['est']][[eff]]=predat[[eff]] %*% blockeff[['beta']][[eff]]
+  
+  #this is _assuming_ at default (left out) variables
+  #should re-estimate based on means??
+  
+  predict[['cov']][[eff]] = predat[[eff]] %*% blockeff[['cov']][[eff]] %*% t(predat[[eff]])
+
+  beta.hat[[eff]] = data.frame(cohort=expand(ndat[,eff]),
+                        est=predict[['est']][[eff]],
+                        se=sqrt(diag(predict[['cov']][[eff]])))
+  }
+  
+  
+  
+    
   #@@@@
   #prepare linear estimates(cubic)
   
@@ -200,8 +228,8 @@ apc_lm = function(formula,data,age,per,coh,windows) {
   return(
     list(
       newdat=ndat,
-      blockdat=blockdat,
-      results=results
+      results=results,
+      block.eff=beta.hat
     )
   )
   
