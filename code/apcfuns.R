@@ -45,7 +45,7 @@ if(!is.na(winlength)){
   win=1:w
   breaks = r[1]-1
   for(i in 0:(ceiling(length(vec)/w)-1)){
-    breaks=append(breaks,max(win+w*i))
+    breaks=append(breaks,vec[max(win+w*i)])
   }
 }#end winlength 
 
@@ -83,24 +83,90 @@ scopedummy.window = function(w) {
 }
 
 #ols funciton for estimating an apc model
-apc_lm = function(formula,data,a,p,c,windows) {
+apc_lm = function(formula,data,age,per,coh,windows) {
   #runs a linear model on an apc problem (need to id window)
   #
   # Inputs
   #  formula=r formula object
   #  data = dataframe
-  #  a,p,c = named columns of dataframe for age, period, cohort
+  #  age,per,coh = named columns of dataframe for age, period, cohort
   #  need only specify 2... If all 3 are specified, model checks for
   #  linear dependence
   #  windows = list identifying window constraints across apc
+  #            if empty, will pick random windows min=3,max=max(variable))
   #
   # Output
   #   list including 
   #   (1) effects =  ols estimates from window model
   #   (2) smallblock = block APC estimates
   #   (3) linear = linearlized block estimates (cubic)
+
+  #@@@@
+  #input checks
+  no.age=no.period=no.cohort=FALSE
+  
+  if(missing(age)){
+    no.age=TRUE
+    age='age'
+  } 
+  if(missing(per)){
+    no.period=TRUE
+    per='period'
+  }
+  if(missing(coh)){
+    no.cohort=TRUE
+    coh='cohort'
+  }
+  
+  if(sum(no.period,no.cohort,no.age)>1){
+    stop('Must specify 2 of 3 required estimates: age, period, or cohort.')
+  } else if(no.age){
+      data[,age]=data[,per]-data[,coh]
+  } else if(no.period){
+      data[,per]=data[,age]+data[,coh]
+  } else if(no.cohort){
+      data[,coh]=data[,per]-data[,age]
+  }
   
   
+  
+  #@@@@
+  #window check
+  if(missing(windows)){
+    windows=list(age=0,period=0,cohort=0)
+    
+    #id random constraint
+    #constr=function(var){
+    #    round(length(unique(var))/3)
+    #}
+    #windows$age=round(runif(1,range(data[,age])))
+    #windows$period=round(runif(1,3,max(data[,per])))
+    #windows$cohort=round(runif(1,3,max(data[,coh])))
+    
+  }
+  
+    
+  #@@@@
+  #build model matrix from window constraints
+  wins=list(
+    a=window(data[,age],winlength=windows$age),
+    p=window(data[,per],winlength=windows$period),
+    c=window(data[,coh],winlength=windows$cohort)
+  )
+  
+  ndat=data
+  
+  
+  #@@@@
+  #estimate OLS model
+  
+  
+  #@@@@
+  #prepare small block estimates
+  
+  
+  #@@@@
+  #prepare linear estimates(cubic)
   
 }
 

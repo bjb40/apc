@@ -11,7 +11,7 @@ library(microbenchmark)
 #load test data
 load(paste0(datdir,'testdat.RData'))
 
-testwindow=FALSE
+testwindow=TRUE; testinvertwindows=FALSE
 
 if(testwindow){
 ######
@@ -19,6 +19,9 @@ if(testwindow){
 ######
 
 a=tdat$a
+c=tdat$p-tdat$a
+
+cw=window(c,winlength=3)
 
 #even windows
 w=window(a,winlength=5)
@@ -46,6 +49,8 @@ window(a)
 #full factor length reversion tests
 #this is key in estimating "single" window estimates
 ######
+if(testinvertwindows){
+
 a = tdat$a
 w = window(a,winlength=5)
 
@@ -57,11 +62,12 @@ invert.window=scopedummy(w)
 print(
   table(invert.window)
 )
+}
 
 ######
 #ols linear model tests
 ######
 
-
+apc_lm(y2~a+p+c,data=tdat,a='a',p='p')
 
 
