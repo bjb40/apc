@@ -82,11 +82,23 @@ for(N in 1:100){
 }
 
 ######
-#Export plots of scenarios
+#Export data for fitted plots of scenarios based on 
+#true betas
 ######
 
+#pull unique data -- should make this a loop
+cohort = unique(dats[[1]]$c)
+fitted = cohort * t.beta[1,'c'] + cohort^2 * t.beta[1,'c2']
+pltdat = data.frame(cohort=cohort,
+                    s1 = fitted,
+                    s2 = fitted,
+                    s3 = fitted,
+                    s4 = rep(0,length(cohort))) 
+
+save(pltdat,file=paste0(datdir,'luo_sim_fits.RData'))
 
 
+  
 #####
 #Save and export simulated data
 #####

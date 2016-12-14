@@ -68,6 +68,8 @@ print(
 #ols linear model tests
 ######
 
+winlist = list(age=4,period=5,cohort=4)
+
 tst=apc_lm(y2~a+p+cohort,data=tdat,a='a',p='p')
 
 ##need to incorprate these into the tests below
@@ -89,7 +91,9 @@ predict=predat %*% c.b
 
 v = predat %*% c.cov %*% t(predat)
 
-preds = data.frame(est=predict,se=sqrt(diag(v)))
+preds = data.frame(cohort=expand(tst$newdat$cohort),
+                   est=predict,
+                   se=sqrt(diag(v)))
 preds$up = preds$est+preds$se*1.96
 preds$down = preds$est-preds$se*1.96
 
@@ -100,9 +104,26 @@ preds$down = preds$est-preds$se*1.96
 #cohort plots
 
 library(ggplot2)
+
+load(paste0(datdir,'luo_sim_fits.RData'))
+
+
+  preds$actual=pltdat$s1[order(pltdat$cohort)]
+  
 g=ggplot(preds,
        aes(y=est,x=1:nrow(preds))) + 
        geom_point() + 
-       geom_errorbar(aes(ymax=up,ymin=down))
+       geom_errorbar(aes(ymax=up,ymin=down)) +
+       geom_line(aes(y=actual))
 
 print(g)
+
+
+load(paste0(datdir,'truebeta.RData'))
+preds$cohort2 = preds$cohort^2
+preds$cohort3 = preds$cohort^3
+print(
+  coefficients(lm(est~cohort+cohort2+cohort3,data=preds))
+)
+
+print(t.beta)

@@ -93,6 +93,15 @@ range.window = function(w){
   return(attr(w,'range'))
 }
 
+expand=function(w){
+  UseMethod('expand',w)
+}
+
+expand.window=function(w){
+  r=range(w)
+  return(r[1]:r[2])
+}
+
 #ols funciton for estimating an apc model
 apc_lm = function(formula,data,age,per,coh,windows) {
   #runs a linear model on an apc problem (need to id window)
@@ -157,7 +166,6 @@ apc_lm = function(formula,data,age,per,coh,windows) {
     
   }
   
-    
   #@@@@
   #build model matrix from window constraints
   wins=list(
