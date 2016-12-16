@@ -70,6 +70,10 @@ print(
 
 winlist = list(age=4,period=5,cohort=4)
 
+#prepare continuous cohort variable 
+#for ineraction (piecewise slopes) -- doesn't work
+#tdat$c=tdat$p-tdat$a
+
 tst=apc_lm(y2~a+p+cohort,data=tdat,a='a',p='p')
 
 
