@@ -20,7 +20,7 @@ load(paste0(datdir,'testdat.RData'))
 lin_gibbs = function(y,x){
   iter = 1000
   
-  ll=r2=s2=matrix(1,iter)
+  ll=r2=s3=matrix(1,iter)
   b= matrix(0,iter,ncol(x))
   yhat=matrix(0,length(y))
   xtxi = solve(t(x)%*%x)
@@ -66,7 +66,7 @@ lin_gibbs = function(y,x){
 models=6^3
 cat('Estimated hours:',models/60/60)
 
-y=tdat$y1
+y=tdat$y3
 tdat$c=tdat$p-tdat$a
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
@@ -163,7 +163,7 @@ preds=as.data.frame(apply(effects[[best]]$c,2,mean)); colnames(preds)='est'
 rng=apply(effects[[best]]$c,2,quantile,c(0.025,0.975))
 preds$up = rng[2,]
 preds$down = rng[1,]
-preds$actual=pltdat$s1[order(pltdat$cohort)]
+preds$actual=pltdat$s2[order(pltdat$cohort)]
 
 g=ggplot(preds,
          aes(y=est,x=1:nrow(preds))) + 
@@ -175,9 +175,6 @@ print(g)
 
 ##post-processing -- model averaging
 #averaging algorithm from ... eq 35 from Rafferty SMR
-
-
-
 
 #w = exp(-.5*bics)/sum(exp(-.5*bics))
 #w_prime=exp(-.5*bics_prime)/sum(exp(-.5*bics_prime))
@@ -193,20 +190,20 @@ for(m in seq_along(effects)){
 
 #weighted mean
 
-#for(l in seq_along(effects)){
-#  for(t in c('a','p','c')){
-#    if(is.null(effects[[l]][[t]])){
-#      effects[[l]][[t]] = 0
-#    }
-#  }
-#}
+for(l in seq_along(effects)){
+  for(t in c('a','p','c')){
+    if(is.null(effects[[l]][[t]])){
+      effects[[l]][[t]] = 0
+    }
+  }
+}
 
 wtmn=function(l,var,w){
   #makes weighted mean
   #l is list results
   #var is charactername
   r=NA
-  if(is.null(l[[var]])){r=0} else{
+  if(length(l[[var]])==1){r=0} else{
     r=apply(l[[var]],2,mean)*w
   }
   return(r)
@@ -218,25 +215,44 @@ preds$m_est =  rowSums(
             wtmn(e,'c',e$w))
 ))
 
-rng2=lapply(
+
+wtquant=function(l,var,w,q){
+  #takes weighted mean of quantile
+  #l is list results
+  #var is charactername
+  #q is quantile
+  r=NA
+  if(length(l[[var]])==1){r=0} else{
+    r=apply(l[[var]],2,quantile,q)*w
+  }
+  return(r)
+}
+
+preds$m_down=rowSums(
+  as.data.frame(lapply(
   effects,FUN=function(e)
-    apply(e,2,quantile,c(0.025,0.975))
+    wtquant(e,'c',e$w,0.025))
+          )
+)
+
+preds$m_up=rowSums(
+  as.data.frame(lapply(
+  effects,FUN=function(e)
+    wtquant(e,'c',e$w,0.975))
   )
+)
 
-
-  #as.data.frame(apply(effects[[best]]$c,2,mean)); colnames(preds)='est'
-
-
-
-library(ggplot2); library(reshape2)
 preds$cohort=1:nrow(preds)
 #predsm=preds[,! colnames(preds) %in% c('up','down')]
 #pp=melt(predsm,id='cohort')
 
 m=ggplot(preds,
          aes(y=m_est,x=cohort)) + 
-         geom_point() + geom_line(aes(y=actual))
+         geom_point() + 
+         geom_errorbar(aes(ymax=m_up,ymin=m_down)) +
+         geom_line(aes(y=actual))
 
        
+
 
 print(m)  
