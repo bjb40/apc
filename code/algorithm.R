@@ -20,7 +20,7 @@ load(paste0(datdir,'testdat.RData'))
 lin_gibbs = function(y,x){
   iter = 1000
   
-  ll=r2=s3=matrix(1,iter)
+  ll=r2=s2=matrix(1,iter)
   b= matrix(0,iter,ncol(x))
   yhat=matrix(0,length(y))
   xtxi = solve(t(x)%*%x)
@@ -66,7 +66,7 @@ lin_gibbs = function(y,x){
 models=6^3
 cat('Estimated hours:',models/60/60)
 
-y=tdat$y3
+y=tdat$y4
 tdat$c=tdat$p-tdat$a
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
@@ -74,7 +74,7 @@ effects=list()
 tm=Sys.time()
 avtm=0
 
-for(age_w in 0:6){
+for(age_w in 0:5){
   
   #reset dataframe
   x=tdat[,c('a','p','c')]
@@ -85,7 +85,7 @@ for(age_w in 0:6){
     x$a=window(tdat$a,winlength=age_w)
   }
 
-  for(period_w in 0:6){
+  for(period_w in 0:5){
 
     if(period_w==0){
       x = x[!colnames(x) == 'p']
@@ -93,17 +93,23 @@ for(age_w in 0:6){
       x$p=window(tdat$p,winlength=period_w)
     }
     
-    for(cohort_w in 0:6){
+    for(cohort_w in 0:5){
 
       if(cohort_w==0){
         x = x[!colnames(x) == 'c']
       } else{
         x$c=window(tdat$c,winlength=cohort_w)
       }
-      
-      if(age_w %in% c(0,1) & period_w %in% c(0,1)){next} ##this leaves out a bunch of models
+      #skip unidentified models
+      comb_w = c(age_w,period_w,cohort_w) 
+      if(all(comb_w ==1) | all(comb_w ==0)){next} 
  
-      cat('\n\nEstimating model',length(allmods),'\n\n')
+      cat('\n\nEstimating model',length(allmods),
+            'with windows:',
+            '\n\tage    ',age_w,
+            '\n\tperiod ',period_w,
+            '\n\tcohort ',cohort_w,
+            '\n\n')
             
       #add esitmate
       mnum = length(allmods)+1
@@ -163,7 +169,7 @@ preds=as.data.frame(apply(effects[[best]]$c,2,mean)); colnames(preds)='est'
 rng=apply(effects[[best]]$c,2,quantile,c(0.025,0.975))
 preds$up = rng[2,]
 preds$down = rng[1,]
-preds$actual=pltdat$s2[order(pltdat$cohort)]
+preds$actual=pltdat$s4[order(pltdat$cohort)]
 
 g=ggplot(preds,
          aes(y=est,x=1:nrow(preds))) + 
