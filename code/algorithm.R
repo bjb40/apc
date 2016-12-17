@@ -66,7 +66,7 @@ lin_gibbs = function(y,x){
 models=6^3
 cat('Estimated hours:',models/60/60)
 
-y=tdat$y4
+y=tdat$y1
 tdat$c=tdat$p-tdat$a
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
@@ -169,7 +169,7 @@ preds=as.data.frame(apply(effects[[best]]$c,2,mean)); colnames(preds)='est'
 rng=apply(effects[[best]]$c,2,quantile,c(0.025,0.975))
 preds$up = rng[2,]
 preds$down = rng[1,]
-preds$actual=pltdat$s4[order(pltdat$cohort)]
+preds$actual=pltdat$s1[order(pltdat$cohort)]
 
 g=ggplot(preds,
          aes(y=est,x=1:nrow(preds))) + 
