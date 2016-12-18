@@ -116,7 +116,8 @@ for(age_w in 0:5){
       m = allmods[[mnum]] = lin_gibbs(y=y,x=model.matrix(~.,x))
       
       #consider limiting base on occam's window...
-      #can i incorporate grandmeans into calculation of beta-hat?
+      #how can i incorporate grandmeans into calculation of beta-hat?
+      #also, some don't have this .... 
       grand.means.a = colSums(model.matrix(~.-1,as.data.frame(x$a)))/nrow(x)
       grand.means.p = colSums(model.matrix(~.-1,as.data.frame(x$p)))/nrow(x)
       grand.means.c = colSums(model.matrix(~.-1,as.data.frame(x$c)))/nrow(x)
