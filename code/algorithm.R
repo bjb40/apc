@@ -115,8 +115,12 @@ for(age_w in 0:5){
       mnum = length(allmods)+1
       m = allmods[[mnum]] = lin_gibbs(y=y,x=model.matrix(~.,x))
       
-      #need post processing (b_hat) here through scopedummy
       #consider limiting base on occam's window...
+      #can i incorporate grandmeans into calculation of beta-hat?
+      grand.means.a = colSums(model.matrix(~.-1,as.data.frame(x$a)))/nrow(x)
+      grand.means.p = colSums(model.matrix(~.-1,as.data.frame(x$p)))/nrow(x)
+      grand.means.c = colSums(model.matrix(~.-1,as.data.frame(x$c)))/nrow(x)
+      
       blockdat=lapply(x,scopedummy)
       predat=lapply(blockdat,FUN=function(x) 
         model.matrix(~.,data=as.data.frame(x)))
