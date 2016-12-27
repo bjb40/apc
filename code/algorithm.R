@@ -116,11 +116,9 @@ for(age_w in 0:5){
       m = allmods[[mnum]] = lin_gibbs(y=y,x=model.matrix(~.,x))
       
       #consider limiting base on occam's window...
-      #how can i incorporate grandmeans into calculation of beta-hat?
+      #how can I incorporate grandmeans into calculation of beta-hat?
       #also, some don't have this .... 
-      grand.means.a = colSums(model.matrix(~.-1,as.data.frame(x$a)))/nrow(x)
-      grand.means.p = colSums(model.matrix(~.-1,as.data.frame(x$p)))/nrow(x)
-      grand.means.c = colSums(model.matrix(~.-1,as.data.frame(x$c)))/nrow(x)
+      grand.means=t(as.matrix(colSums(model.matrix(~.,x))/nrow(x)))
       
       blockdat=lapply(x,scopedummy)
       predat=lapply(blockdat,FUN=function(x) 
@@ -129,7 +127,15 @@ for(age_w in 0:5){
       effects[[mnum]] = list()
       
       betas=list()
-      for(eff in names(predat)){      
+      for(eff in names(predat)){
+        xhat=matrix(0,nrow(predat[[eff]]),ncol(m$betas)); colnames(xhat)=colnames(m$betas)
+        colnames(predat[[eff]])=sub('x',eff,colnames(predat[[eff]]))
+        
+        grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),])
+        
+        xhat[,colnames(predat[[eff]])] = predat[[eff]]
+        
+        
         betas[[eff]] = m$betas[,grepl(paste0('Intercept|',eff),colnames(m$betas))]
         effects[[mnum]][[eff]] = t(predat[[eff]] %*% t(betas[[eff]]))
         colnames(effects[[mnum]][[eff]]) = paste0(eff,unique(tdat[,eff]))
@@ -191,7 +197,7 @@ print(g)
 #w_prime=exp(-.5*bics_prime)/sum(exp(-.5*bics_prime))
 
 #there are severe underflow problems.... since this is just a proportionality issue
-#/changing proportion
+#/changing proportion (should be .5)
 prop=0.000005
 w = exp(prop*bics)/sum(exp(prop*bics))
 
