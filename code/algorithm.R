@@ -128,16 +128,12 @@ for(age_w in 0:5){
       
       betas=list()
       for(eff in names(predat)){
-        xhat=matrix(0,nrow(predat[[eff]]),ncol(m$betas)); colnames(xhat)=colnames(m$betas)
-        colnames(predat[[eff]])=sub('x',eff,colnames(predat[[eff]]))
-        
-        grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),])
-        
+        #input means for xhat
+        xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
+        #replace specific with predat
         xhat[,colnames(predat[[eff]])] = predat[[eff]]
-        
-        
-        betas[[eff]] = m$betas[,grepl(paste0('Intercept|',eff),colnames(m$betas))]
-        effects[[mnum]][[eff]] = t(predat[[eff]] %*% t(betas[[eff]]))
+
+        effects[[mnum]][[eff]] = t(xhat %*% t(m$betas))
         colnames(effects[[mnum]][[eff]]) = paste0(eff,unique(tdat[,eff]))
       }
       
