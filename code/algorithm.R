@@ -128,6 +128,8 @@ for(age_w in 0:5){
       
       betas=list()
       for(eff in names(predat)){
+        #fix colnames
+        colnames(predat[[eff]]) = sub('x',eff,colnames(predat[[eff]]))
         #input means for xhat
         xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
         #replace specific with predat
