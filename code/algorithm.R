@@ -16,7 +16,6 @@ load(paste0(datdir,'testdat.RData'))
 #basic linear model gibbs sampler (Scott)
 ###
 
-
 lin_gibbs = function(y,x){
   iter = 1000
   
@@ -131,6 +130,9 @@ for(age_w in 0:5){
         #fix colnames
         colnames(predat[[eff]]) = sub('x',eff,colnames(predat[[eff]]))
         #input means for xhat
+        
+        
+        
         xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
         #replace specific with predat
         xhat[,colnames(predat[[eff]])] = predat[[eff]]
