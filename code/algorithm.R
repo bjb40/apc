@@ -190,23 +190,30 @@ for(d in c('a','p','c')){
   preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
   preds[[d]]$id=pltdat[[d]]$id[order(pltdat[[d]]$id)]
   
+  
+  #need to change axes and limits...actually better to melt into df 
+  #and not to use grid.arrange... (same for below)
   calcplt=ggplot(preds[[d]],
-           aes_string(y='est',x='id') ) + 
+    aes_string(y='est',x='id') ) + 
     geom_point() + 
     geom_errorbar(aes(ymax=up,ymin=down)) +
     geom_line(aes(y=actual))
 
-  print(calcplt)
+  #print(calcplt)
+  #Sys.sleep(2)
+  
   best.plt[[d]]=calcplt
-  Sys.sleep(2)
   
 }
+
+pdf(file=paste0(imdir,'best-fit.pdf'))
 
 grid.arrange(best.plt[['a']],
             best.plt[['p']],
             best.plt[['c']],
             ncol=3)
 
+dev.off()
 
 ##post-processing -- model averaging
 #averaging algorithm from ... eq 35 from Rafferty SMR
@@ -244,13 +251,6 @@ wtmn=function(l,var,w){
   return(r)
 }
 
-preds$m_est =  rowSums(
-  as.data.frame(
-      lapply(effects,FUN=function(e)
-            wtmn(e,'c',e$w))
-))
-
-
 wtquant=function(l,var,w,q){
   #takes weighted mean of quantile
   #l is list results
@@ -263,33 +263,53 @@ wtquant=function(l,var,w,q){
   return(r)
 }
 
-####plot mean...
 
-preds$m_down=rowSums(
+####plot means ... [[HERE!!]]
+
+mean.plt=list()
+
+for(d in names(preds)){
+
+preds[[d]]$m_est =  rowSums(
+  as.data.frame(
+      lapply(effects,FUN=function(e)
+            wtmn(e,d,e$w))
+))
+
+
+  
+preds[[d]]$m_down=rowSums(
   as.data.frame(lapply(
   effects,FUN=function(e)
-    wtquant(e,'c',e$w,0.025))
+    wtquant(e,d,e$w,0.025))
           )
 )
 
-preds$m_up=rowSums(
+preds[[d]]$m_up=rowSums(
   as.data.frame(lapply(
   effects,FUN=function(e)
-    wtquant(e,'c',e$w,0.975))
+    wtquant(e,d,e$w,0.975))
   )
 )
 
-preds$cohort=1:nrow(preds)
+#preds$cohort=1:nrow(preds)
 #predsm=preds[,! colnames(preds) %in% c('up','down')]
 #pp=melt(predsm,id='cohort')
 
-m=ggplot(preds,
-         aes(y=m_est,x=cohort)) + 
+mean.plt[[d]]=ggplot(preds[[d]],
+         aes_string(y='m_est',x='id')) + 
          geom_point() + 
          geom_errorbar(aes(ymax=m_up,ymin=m_down)) +
          geom_line(aes(y=actual))
 
        
+}
 
+pdf(file=paste0(imdir,'mean-fit.pdf'))
 
-print(m)  
+grid.arrange(mean.plt[['a']],
+             mean.plt[['p']],
+             mean.plt[['c']],
+             ncol=3)
+
+dev.off()
