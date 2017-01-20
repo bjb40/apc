@@ -173,22 +173,40 @@ print(mean(allmods[[best]]$r2))
 #NOTE that the zero  may be a messed up order in the name!!
 
 library(ggplot2)
+library(gridExtra)
 
 load(paste0(datdir,'luo_sim_fits.RData'))
 
-preds=as.data.frame(apply(effects[[best]]$c,2,mean)); colnames(preds)='est'
-rng=apply(effects[[best]]$c,2,quantile,c(0.025,0.975))
-preds$up = rng[2,]
-preds$down = rng[1,]
-preds$actual=pltdat$s1[order(pltdat$cohort)]
+best.plt = list()
+preds = list()
 
-g=ggplot(preds,
-         aes(y=est,x=1:nrow(preds))) + 
-  geom_point() + 
-  geom_errorbar(aes(ymax=up,ymin=down)) +
-  geom_line(aes(y=actual))
+for(d in c('a','p','c')){
 
-print(g)
+  preds[[d]]=as.data.frame(apply(effects[[best]][[d]],2,mean))
+  colnames(preds[[d]])='est'
+  rng=apply(effects[[best]][[d]],2,quantile,c(0.025,0.975))
+  preds[[d]]$up = rng[2,]
+  preds[[d]]$down = rng[1,]
+  preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
+  preds[[d]]$id=pltdat[[d]]$id[order(pltdat[[d]]$id)]
+  
+  calcplt=ggplot(preds[[d]],
+           aes_string(y='est',x='id') ) + 
+    geom_point() + 
+    geom_errorbar(aes(ymax=up,ymin=down)) +
+    geom_line(aes(y=actual))
+
+  print(calcplt)
+  best.plt[[d]]=calcplt
+  Sys.sleep(2)
+  
+}
+
+grid.arrange(best.plt[['a']],
+            best.plt[['p']],
+            best.plt[['c']],
+            ncol=3)
+
 
 ##post-processing -- model averaging
 #averaging algorithm from ... eq 35 from Rafferty SMR
@@ -244,6 +262,8 @@ wtquant=function(l,var,w,q){
   }
   return(r)
 }
+
+####plot mean...
 
 preds$m_down=rowSums(
   as.data.frame(lapply(

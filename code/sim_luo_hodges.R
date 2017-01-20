@@ -87,13 +87,21 @@ for(N in 1:100){
 ######
 
 #pull unique data -- should make this a loop
-cohort = unique(dats[[1]]$c)
-fitted = cohort * t.beta[1,'c'] + cohort^2 * t.beta[1,'c2']
-pltdat = data.frame(cohort=cohort,
-                    s1 = fitted,
-                    s2 = fitted,
-                    s3 = fitted,
-                    s4 = rep(0,length(cohort))) 
+uns = list(
+  c = unique(dats[[1]]$c), a=unique(dats[[1]]$a), p=unique(dats[[1]]$p)
+)
+
+pltdat=list()
+
+for(d in c('a','p','c')){
+  pltdat[[d]] = data.frame(id=uns[[d]], ####these are all the same --- needs to be different
+                      s1 = uns[[d]] * t.beta[1,d] + uns[[d]]^2 * t.beta[1,paste0(d,'2')],
+                      s2 = uns[[d]] * t.beta[2,d] + uns[[d]]^2 * t.beta[2,paste0(d,'2')],
+                      s3 = uns[[d]] * t.beta[3,d] + uns[[d]]^2 * t.beta[3,paste0(d,'2')],
+                      s4 = uns[[d]] * t.beta[4,d] + uns[[d]]^2 * t.beta[4,paste0(d,'2')] 
+                      )
+
+}
 
 save(pltdat,file=paste0(datdir,'luo_sim_fits.RData'))
 
