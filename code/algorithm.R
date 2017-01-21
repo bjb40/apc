@@ -65,7 +65,10 @@ lin_gibbs = function(y,x){
 models=6^3
 cat('Estimated hours:',models/60/60)
 
-y=tdat$y1
+#y1 - y4 for scenarios
+#s1 - s4 are "actual" for scenarios
+#y=tdat$y1
+y=tdat$y4
 tdat$c=tdat$p-tdat$a
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
@@ -187,7 +190,9 @@ for(d in c('a','p','c')){
   rng=apply(effects[[best]][[d]],2,quantile,c(0.025,0.975))
   preds[[d]]$up = rng[2,]
   preds[[d]]$down = rng[1,]
-  preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
+  #s1-s4 are for scenarios --- needs to match with y1-y4
+  #preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
+  preds[[d]]$actual=pltdat[[d]]$s4[order(pltdat[[d]]$id)]
   preds[[d]]$id=pltdat[[d]]$id[order(pltdat[[d]]$id)]
   
   
