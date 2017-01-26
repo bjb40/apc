@@ -72,7 +72,7 @@ y=tdat$y4
 tdat$c=tdat$p-tdat$a
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
-effects=list()
+effects=xhats=list()
 tm=Sys.time()
 avtm=0
 
@@ -126,7 +126,7 @@ for(age_w in 0:5){
       predat=lapply(blockdat,FUN=function(x) 
         model.matrix(~.,data=as.data.frame(x)))
 
-      effects[[mnum]] = list()
+      effects[[mnum]] = xhats[[mnum]] = list()
       
       betas=list()
       for(eff in names(predat)){
@@ -134,11 +134,10 @@ for(age_w in 0:5){
         colnames(predat[[eff]]) = sub('x',eff,colnames(predat[[eff]]))
         #input means for xhat
         
-        
-        
         xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
         #replace specific with predat
         xhat[,colnames(predat[[eff]])] = predat[[eff]]
+        xhats[[mnum]][[eff]] = xhat
 
         effects[[mnum]][[eff]] = t(xhat %*% t(m$betas))
         colnames(effects[[mnum]][[eff]]) = paste0(eff,unique(tdat[,eff]))
@@ -211,14 +210,14 @@ for(d in c('a','p','c')){
   
 }
 
-pdf(file=paste0(imdir,'best-fit.pdf'))
+#pdf(file=paste0(imdir,'best-fit.pdf'))
 
 grid.arrange(best.plt[['a']],
             best.plt[['p']],
             best.plt[['c']],
             ncol=3)
 
-dev.off()
+#dev.off()
 
 ##post-processing -- model averaging
 #averaging algorithm from ... eq 35 from Rafferty SMR
@@ -310,11 +309,11 @@ mean.plt[[d]]=ggplot(preds[[d]],
        
 }
 
-pdf(file=paste0(imdir,'mean-fit.pdf'))
+#pdf(file=paste0(imdir,'mean-fit.pdf'))
 
 grid.arrange(mean.plt[['a']],
              mean.plt[['p']],
              mean.plt[['c']],
              ncol=3)
 
-dev.off()
+#dev.off()
