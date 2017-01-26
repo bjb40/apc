@@ -42,6 +42,15 @@ x$a=window(x$a,winlength=1)
 x$p=window(x$p,winlength=1)
 
 xmat=model.matrix(~.,data=as.data.frame(x))
+xhat = xhats[[42]]
 
 summary(lm(tdat$y4~xmat))
+
+rev=list(a=apply(round(xhat[['a']]) %*% t(as.matrix(allmods[[42]]$betas)),1,mean),
+         p=apply(round(xhat[['p']]) %*% t(as.matrix(allmods[[42]]$betas)),1,mean))
+
+plot(1:20,rev[['a']]); lines(1:20,preds[['a']]$actual)
+
+plot(1:20,rev[['p']]); lines(1:20,preds[['p']]$actual)
+
 
