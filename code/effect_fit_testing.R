@@ -1,17 +1,23 @@
 ##42 is single windows for a and p with no c y4 
+##6 is single windows for p and c with no a y2
+
+testmodel=6
+actual='s2'
+dv='y2'
+totest = c('p','c')
 
 #apc_lm(y4~a+p,tdat,age='a',per='p')
 
-for(d in c('a','p')){
+for(d in totest){
   
-  preds[[d]]=as.data.frame(apply(effects[[42]][[d]],2,mean))
+  preds[[d]]=as.data.frame(apply(effects[[testmodel]][[d]],2,mean))
   colnames(preds[[d]])='est'
-  rng=apply(effects[[42]][[d]],2,quantile,c(0.025,0.975))
+  rng=apply(effects[[testmodel]][[d]],2,quantile,c(0.025,0.975))
   preds[[d]]$up = rng[2,]
   preds[[d]]$down = rng[1,]
   #s1-s4 are for scenarios --- needs to match with y1-y4
   #preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
-  preds[[d]]$actual=pltdat[[d]]$s4[order(pltdat[[d]]$id)]
+  preds[[d]]$actual=pltdat[[d]][,actual][order(pltdat[[d]]$id)]
   preds[[d]]$id=pltdat[[d]]$id[order(pltdat[[d]]$id)]
   
   
@@ -31,26 +37,26 @@ for(d in c('a','p')){
 }
 
 
-grid.arrange(best.plt[['a']],
+grid.arrange(#best.plt[['a']],
              best.plt[['p']],
-#             best.plt[['c']],
-             ncol=3)
+             best.plt[['c']],
+             ncol=2)
 
 #x estimates
-x = tdat[,c('a','p')]
-x$a=window(x$a,winlength=1)
+x = tdat[,totest]
 x$p=window(x$p,winlength=1)
+x$c=window(x$c,winlength=1)
 
 xmat=model.matrix(~.,data=as.data.frame(x))
-xhat = xhats[[42]]
+xhat = xhats[[testmodel]]
 
-summary(lm(tdat$y4~xmat))
+summary(lm(tdat[,dv]~xmat))
 
-rev=list(a=apply(round(xhat[['a']]) %*% t(as.matrix(allmods[[42]]$betas)),1,mean),
-         p=apply(round(xhat[['p']]) %*% t(as.matrix(allmods[[42]]$betas)),1,mean))
-
-plot(1:20,rev[['a']]); lines(1:20,preds[['a']]$actual)
+rev=list(p=apply(round(xhat[['p']]) %*% t(as.matrix(allmods[[testmodel]]$betas)),1,mean),
+         c=apply(round(xhat[['c']]) %*% t(as.matrix(allmods[[testmodel]]$betas)),1,mean))
 
 plot(1:20,rev[['p']]); lines(1:20,preds[['p']]$actual)
+
+plot(1:20,rev[['c']]); lines(1:20,preds[['c']]$actual)
 
 
