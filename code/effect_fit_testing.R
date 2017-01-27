@@ -1,7 +1,7 @@
 ##42 is single windows for a and p with no c y4 
-##6 is single windows for p and c with no a y2
+##7 is single windows for p and c with no a y2
 
-testmodel=6
+testmodel=7
 actual='s2'
 dv='y2'
 totest = c('p','c')
@@ -42,21 +42,44 @@ grid.arrange(#best.plt[['a']],
              best.plt[['c']],
              ncol=2)
 
+Sys.sleep(5)
+
 #x estimates
 x = tdat[,totest]
 x$p=window(x$p,winlength=1)
 x$c=window(x$c,winlength=1)
 
 xmat=model.matrix(~.,data=as.data.frame(x))
-xhat = xhats[[testmodel]]
+#xhat = xhats[[testmodel]]
+#u.tdat=unique(tdat[,c('a','p','c')])
+u.tdat = tdat[,c('a','p','c')]
+xhat= data.frame(p=window(u.tdat$p,1),
+                     c=window(u.tdat$c,1))
+xhat=model.matrix(~.,xhat)
 
-summary(lm(tdat[,dv]~xmat))
+ summary(lm(tdat[,dv]~xmat-1))
 
-rev=list(p=apply(round(xhat[['p']]) %*% t(as.matrix(allmods[[testmodel]]$betas)),1,mean),
-         c=apply(round(xhat[['c']]) %*% t(as.matrix(allmods[[testmodel]]$betas)),1,mean))
+ rev=apply(xhat %*% t(as.matrix(allmods[[testmodel]]$betas)),1,mean)
 
-plot(1:20,rev[['p']]); lines(1:20,preds[['p']]$actual)
+ #need to weight the mean by its frequency?
+ u.tdat$pred=rev
+ pred=list(p=aggregate(rev,by=list(u.tdat$p),mean)[,2],
+           c=aggregate(rev,by=list(u.tdat$c),mean)[,2])
+  
+#rev=list(p=apply(round(xhat[['p']]) %*% t(as.matrix(allmods[[testmodel]]$betas)),1,mean),
+#         c=apply(round(xhat[['c']]) %*% t(as.matrix(allmods[[testmodel]]$betas)),1,mean))
 
-plot(1:20,rev[['c']]); lines(1:20,preds[['c']]$actual)
+par(mfrow=c(1,2))
+plot(1:20,pred[['p']]); lines(1:20,preds[['p']]$actual)
+plot(1:39,pred[['c']]); lines(1:39,preds[['c']]$actual)
+
+#conditional means (observed)
+
+u.tdat=unique(tdat[,c('a','p','c')])
+
+tt=data.frame(p=window(u.tdat$p,1),c=window(u.tdat$c,1))
+tt.prop=prop.table(table(tt),1)
+View(tt.prop)
+
 
 
