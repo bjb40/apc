@@ -35,10 +35,14 @@ lin_gibbs = function(y,x){
   #if you can vetorize this you will speed up a lot !!
   for (i in 1:iter){
     b[i,]=pars+t(rnorm(length(pars),mean=0,sd=1))%*%chol(s2[i]*xtxi)
-    sse = sum((y-(x %*% b[i,]))^2)
+    yhat = x %*% b[i,]
+    sse = sum((y-(yhat))^2)
     sst = sum((y-mean(y))^2)
     r2[i] = 1-(sse/sst)
-    ll[i]=sum(dnorm(y,mean=y-(x%*% b[i,]),sd=s2[i],log=TRUE))
+    ll[i]=sum(dnorm(y,mean=y-(yhat),sd=s2[i],log=TRUE))
+    
+    #ppd[i,] = yhat + rnorm(length(y),mean=0,sd=s2[i])
+    
   }
   
   colnames(b) = colnames(x)
@@ -68,11 +72,11 @@ cat('Estimated hours:',models/60/60)
 #y1 - y4 for scenarios
 #s1 - s4 are "actual" for scenarios
 #y=tdat$y1
-y=tdat$y2
+y=tdat$y1
 tdat$c=tdat$p-tdat$a
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
-effects=xhats=list()
+effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
 
@@ -144,7 +148,12 @@ for(age_w in 0:5){
       }
       
       effects[[mnum]]$bic=m$bic
-
+      
+      #yhat
+      #ppd[[mnum]] = xhat %*% t(as.matrix(allmods[[mnum]]$betas))
+      #ytilde
+      #ppd[[mnum]] = 
+      
 #      if(length(allmods)%%10==0){
         avtm=(avtm*(length(allmods)-1)+Sys.time()-tm)/length(allmods)
         cat('Average model time:',avtm,'\n\n')
@@ -191,7 +200,7 @@ for(d in c('a','p','c')){
   preds[[d]]$down = rng[1,]
   #s1-s4 are for scenarios --- needs to match with y1-y4
   #preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
-  preds[[d]]$actual=pltdat[[d]]$s2[order(pltdat[[d]]$id)]
+  preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
   preds[[d]]$id=pltdat[[d]]$id[order(pltdat[[d]]$id)]
   
   
