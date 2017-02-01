@@ -94,7 +94,7 @@ uns = list(
 pltdat=list()
 
 for(d in c('a','p','c')){
-  pltdat[[d]] = data.frame(id=uns[[d]], ####these are all the same --- needs to be different
+  pltdat[[d]] = data.frame(id=uns[[d]], 
                       s1 = uns[[d]] * t.beta[1,d] + uns[[d]]^2 * t.beta[1,paste0(d,'2')],
                       s2 = uns[[d]] * t.beta[2,d] + uns[[d]]^2 * t.beta[2,paste0(d,'2')],
                       s3 = uns[[d]] * t.beta[3,d] + uns[[d]]^2 * t.beta[3,paste0(d,'2')],

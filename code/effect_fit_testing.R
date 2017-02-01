@@ -20,6 +20,7 @@ for(d in totest){
   preds[[d]]$actual=pltdat[[d]][,actual][order(pltdat[[d]]$id)]
   preds[[d]]$id=pltdat[[d]]$id[order(pltdat[[d]]$id)]
   
+  #these are the margins / se is pretty close
   
   #need to change axes and limits...actually better to melt into df 
   #and not to use grid.arrange... (same for below)
@@ -65,13 +66,34 @@ xhat=model.matrix(~.,xhat)
  u.tdat$pred=rev
  pred=list(p=aggregate(rev,by=list(u.tdat$p),mean)[,2],
            c=aggregate(rev,by=list(u.tdat$c),mean)[,2])
-  
+ 
+   
 #rev=list(p=apply(round(xhat[['p']]) %*% t(as.matrix(allmods[[testmodel]]$betas)),1,mean),
 #         c=apply(round(xhat[['c']]) %*% t(as.matrix(allmods[[testmodel]]$betas)),1,mean))
 
 par(mfrow=c(1,2))
 plot(1:20,pred[['p']]); lines(1:20,preds[['p']]$actual)
 plot(1:39,pred[['c']]); lines(1:39,preds[['c']]$actual)
+
+ggplot(u.tdat,aes(x=c,y=pred,color=p)) + geom_point()
+
+ggplot(u.tdat,aes(x=p,y=pred,color=c)) + geom_point()
+
+base=ggplot(u.tdat,aes(x=c,y=p)) 
+  base + geom_raster(aes(fill=pred),interpolate=TRUE)
+  
+  base + stat_density(aes(fill=..count..), geom='raster', position='identity')
+
+#p.preds = data.frame(id=1:20,pred=pred[['p']],actual=preds[['p']]$actual)
+#c.preds = data.frame(id=1:39,pred=pred[['c']],actual=preds[['c']]$actual)
+
+
+calcplt=ggplot(preds[[d]],
+               aes_string(y='est',x='id') ) + 
+  geom_point() + 
+  geom_errorbar(aes(ymax=up,ymin=down)) +
+  geom_line(aes(y=actual))
+
 
 #conditional means (observed)
 
@@ -80,6 +102,48 @@ u.tdat=unique(tdat[,c('a','p','c')])
 tt=data.frame(p=window(u.tdat$p,1),c=window(u.tdat$c,1))
 tt.prop=prop.table(table(tt),1)
 View(tt.prop)
+ 
+
+#@@@@@@posterior predictive and bayesian p-values
+
+#simulate y distributions from estimates
+
+ytilde = xhat %*% t(as.matrix(allmods[[testmodel]]$betas))
+
+ytilde = sapply(1:1000,function(i)
+              ytilde[,i] + rnorm(10000,mean=0,sd=allmods[[testmodel]]$sigma[i]))
+
+#omnibus bayesian pvalues
+print(summary(tdat$y2))
+print(summary(as.vector(ytilde)))
+
+#mean
+sum(apply(ytilde,2,mean)<mean(tdat$y2))/ncol(ytilde)
+#sum(apply(ytilde,2,max)<max(tdat$y2))/ncol(ytilde)
+#sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
+
+
+#bayesian p-values by period 
+library(dplyr)
+
+actual.period = aggregate(tdat$y2,by=list(tdat$p),mean)
+ytilde.period =  sapply(1:ncol(ytilde),function(i)
+                        aggregate(ytilde[,i],by=list(tdat$p),mean)[[2]]
+                        )
+sapply(seq_along(actual.period[[1]]),function(i)
+              sum(ytilde.period[i,]>actual.period[i,2])/nrow(ytilde)
+)
+
+plot(actual.period)
+
+#bayesian p-values by cohort 
+actual.cohort = aggregate(tdat$y2,by=list(tdat$c),mean)
+ytilde.cohort =  sapply(1:ncol(ytilde),function(i)
+  aggregate(ytilde[,i],by=list(tdat$c),mean)[[2]]
+)
+sapply(seq_along(actual.cohort[[1]]),function(i)
+  sum(ytilde.cohort[i,]>actual.cohort[i,2])/nrow(ytilde)
+)
 
 
 
