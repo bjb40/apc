@@ -344,7 +344,7 @@ grid.arrange(mean.plt[['a']],
 ##posterior for mean effects
 
 #draw list for posterior sample
-post.size=10000
+post.size=1000
 ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
 post.mods = sample(win$modnum,size=post.size,
                    replace=TRUE,prob=win$wt)
@@ -378,11 +378,15 @@ for(i in seq_along(post.mods)){
   
 }
 
-#summary stats for posterior predictive
+sink(paste0(outdir,'mean-fit-posterior-pval.txt'),type=c('output','message'))
+
+#omnibus bayesian pvalues
+print('Summary of acutal to posterior')
 print(summary(tdat$y1))
 print(summary(as.vector(ytilde)))
 
 #mean
+print('omnibus bayesian p-value of mean')
 sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
 #sum(apply(ytilde,2,max)<max(tdat$y2))/ncol(ytilde)
 #sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
@@ -391,6 +395,7 @@ sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
 #bayesian p-values by period 
 library(dplyr)
 
+print('period pvalues')
 actual.period = aggregate(tdat[,dv],by=list(tdat$p),mean)
 ytilde.period =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$p),mean)[[2]]
@@ -401,6 +406,8 @@ sapply(seq_along(actual.period[[1]]),function(i)
 
 
 #bayesian p-values by cohort 
+print('cohort pvalues')
+
 actual.cohort = aggregate(tdat[,dv],by=list(tdat$c),mean)
 ytilde.cohort =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$c),mean)[[2]]
@@ -411,6 +418,8 @@ sapply(seq_along(actual.cohort[[1]]),function(i)
 
 
 #bayesian p-values by age 
+print('age pvalues')
+
 actual.age = aggregate(tdat[,dv],by=list(tdat$a),mean)
 ytilde.age =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$a),mean)[[2]]
@@ -418,11 +427,11 @@ ytilde.age =  sapply(1:ncol(ytilde),function(i)
 sapply(seq_along(actual.age[[1]]),function(i)
   sum(ytilde.age[i,]>actual.age[i,2])/ncol(ytilde)
 )
+sink()
 
+pdf(paste0(imdir,'mean-fit-post.pdf'))
 par(mfrow=c(1,3))
-plot(actual.age); lines(actual.age[[1]],apply(ytilde.age,1,mean))
-plot(actual.period); lines(actual.period[[1]],apply(ytilde.period,1,mean))
-plot(actual.cohort); lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean))
-
-
-
+plot(actual.age,type='l'); lines(actual.age[[1]],apply(ytilde.age,1,mean),type='p')
+plot(actual.period,type='l'); lines(actual.period[[1]],apply(ytilde.period,1,mean),type='p')
+plot(actual.cohort,type='l'); lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean),type='p')
+dev.off()
