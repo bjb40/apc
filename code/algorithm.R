@@ -248,8 +248,16 @@ for(m in seq_along(effects)){
   effects[[m]]$w=w[m]
 }
 
-#weighted mean
+#add weight to apc windows dataframe
+win$wt=w
+win$modnum=1:nrow(win)
 
+#print weighted mean of windows...
+print(
+  apply(win[,c('a','p','c')],2,weighted.mean,w=win$wt)
+)
+
+#weighted mean
 for(l in seq_along(effects)){
   for(t in c('a','p','c')){
     if(is.null(effects[[l]][[t]])){
@@ -333,5 +341,88 @@ grid.arrange(mean.plt[['a']],
 #dev.off()
 
 
-##posterior from mean
+##posterior for mean effects
+
+#draw list for posterior sample
+post.size=10000
+ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
+post.mods = sample(win$modnum,size=post.size,
+                   replace=TRUE,prob=win$wt)
+
+for(i in seq_along(post.mods)){
+  i.win=win[post.mods[i],]
+  keep=NULL
+  xhat=tdat[,c('a','p','c')]
+  #calculate yhat|a single draw from the model
+  if(i.win$a>0){
+    xhat$a=window(tdat$a,i.win$a)
+    keep[length(keep)+1] = 'a'}
+  if(i.win$p>0){
+    xhat$p=window(tdat$p,i.win$p)
+    keep[length(keep)+1] = 'p'}
+  if(i.win$c>0){
+    xhat$c=window(tdat$c,i.win$c)
+    keep[length(keep)+1] = 'c'}
+  
+  xhat = as.data.frame(xhat[,colnames(xhat) %in% keep])
+  xhat = model.matrix(~.,xhat)
+  
+  #draw single set of betas and calculate yhat
+  b = allmods[[i.win$modnum]]$beta[sample(1:1000,1),]
+  s2 = allmods[[i.win$modnum]]$sigma
+  ytilde[,i] = xhat %*% b + rnorm(nrow(xhat),mean=0,sd=s2)
+  
+  if(i%%100==0){
+    cat(i, 'of', length(post.mods),'\n')
+  }
+  
+}
+
+#summary stats for posterior predictive
+print(summary(tdat$y1))
+print(summary(as.vector(ytilde)))
+
+#mean
+sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
+#sum(apply(ytilde,2,max)<max(tdat$y2))/ncol(ytilde)
+#sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
+
+
+#bayesian p-values by period 
+library(dplyr)
+
+actual.period = aggregate(tdat[,dv],by=list(tdat$p),mean)
+ytilde.period =  sapply(1:ncol(ytilde),function(i)
+  aggregate(ytilde[,i],by=list(tdat$p),mean)[[2]]
+)
+sapply(seq_along(actual.period[[1]]),function(i)
+  sum(ytilde.period[i,]>actual.period[i,2])/ncol(ytilde)
+)
+
+
+#bayesian p-values by cohort 
+actual.cohort = aggregate(tdat[,dv],by=list(tdat$c),mean)
+ytilde.cohort =  sapply(1:ncol(ytilde),function(i)
+  aggregate(ytilde[,i],by=list(tdat$c),mean)[[2]]
+)
+sapply(seq_along(actual.cohort[[1]]),function(i)
+  sum(ytilde.cohort[i,]>actual.cohort[i,2])/ncol(ytilde)
+)
+
+
+#bayesian p-values by age 
+actual.age = aggregate(tdat[,dv],by=list(tdat$a),mean)
+ytilde.age =  sapply(1:ncol(ytilde),function(i)
+  aggregate(ytilde[,i],by=list(tdat$a),mean)[[2]]
+)
+sapply(seq_along(actual.age[[1]]),function(i)
+  sum(ytilde.age[i,]>actual.age[i,2])/ncol(ytilde)
+)
+
+par(mfrow=c(1,3))
+plot(actual.age); lines(actual.age[[1]],apply(ytilde.age,1,mean))
+plot(actual.period); lines(actual.period[[1]],apply(ytilde.period,1,mean))
+plot(actual.cohort); lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean))
+
+
 
