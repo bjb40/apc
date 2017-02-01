@@ -145,5 +145,5 @@ sapply(seq_along(actual.cohort[[1]]),function(i)
   sum(ytilde.cohort[i,]>actual.cohort[i,2])/nrow(ytilde)
 )
 
-
+plot(actual.cohort)
 
