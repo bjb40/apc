@@ -7,9 +7,9 @@ dv='y1'
 totest = c('a','p','c')
 
 #one off for now based on looking...
-xhat=data.frame(a=window(tdat$a,1),
-                p=window(tdat$p,1),
-                c=window(tdat$c,2))
+xhat=data.frame(a=window(tdat$a,win[best,'a']),
+                p=window(tdat$p,win[best,'p']),
+                c=window(tdat$c,win[best,'c']))
 xhat=model.matrix(~.,xhat)
 
 #apc_lm(y4~a+p,tdat,age='a',per='p')

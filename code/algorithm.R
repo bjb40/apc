@@ -80,11 +80,13 @@ effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
 
+win = data.frame(a=numeric(), p=numeric(), c=numeric())
+
 for(age_w in 0:5){
   
   #reset dataframe
   x=tdat[,c('a','p','c')]
-  
+
   if(age_w==0){
     x = x[!colnames(x) == 'a']
   } else{
@@ -109,7 +111,10 @@ for(age_w in 0:5){
       #skip unidentified models
       comb_w = c(age_w,period_w,cohort_w) 
       if(all(comb_w ==1) | all(comb_w ==0)){next} 
- 
+      
+      nr=data.frame(a=age_w,p=period_w,c=cohort_w)
+      win=rbind(win,nr)
+       
       cat('\n\nEstimating model',length(allmods),
             'with windows:',
             '\n\tage    ',age_w,
@@ -326,3 +331,7 @@ grid.arrange(mean.plt[['a']],
              ncol=3)
 
 #dev.off()
+
+
+##posterior from mean
+
