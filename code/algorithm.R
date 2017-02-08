@@ -32,7 +32,7 @@ lin_gibbs = function(y,x){
   ppd = matrix(0,iter,length(y))
   
   #simulate beta from mvn
-  #if you can vetorize this you will speed up a lot !!
+  #if you can vetorize this you will speed up!!
   for (i in 1:iter){
     b[i,]=pars+t(rnorm(length(pars),mean=0,sd=1))%*%chol(s2[i]*xtxi)
     yhat = x %*% b[i,]
