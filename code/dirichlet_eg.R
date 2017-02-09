@@ -40,8 +40,6 @@ apply(cum.breaks[,1:19],2,min,na.rm=TRUE)
 ####uniform equality partition ....
 #50% probability it is equal to next value
 winnum=matrix(0,1000,1)
-
-
 cum.breaks=matrix(as.numeric(NA),1000,20)
 
 for(i in 1:1000){
@@ -68,3 +66,46 @@ print('max')
 apply(cum.breaks[,1:19],2,max,na.rm=TRUE)
 print('min')
 apply(cum.breaks[,1:19],2,min,na.rm=TRUE)
+
+
+
+
+####alt idea ---- each is an ind parameter of equality to next value
+#then in the mh algorithm, they can be updated
+#you can probably figure out using combinotorics the best way 
+# to limit window size
+# e.g. if probability of equality is .2 ... sum(.2>runif(1000))/1000
+
+#reasonable prior: as likely to equal as not equal...
+#should look at that bayesian model from the green book some time...
+
+winnum=matrix(0,1000,1)
+cum.breaks=matrix(as.numeric(NA),1000,20)
+
+
+p=rep(.5,20) # can draw from a proposal support between 0 and 1
+
+for(i in 1:1000){
+  equ.draws = runif(20)
+  partition = p>equ.draws
+  if(!any(partition)){next} #skipp cases with no breaks (could add as continuous...)
+  breaks=c(0,which(partition==TRUE),20)
+  print(breaks)  
+  cum.breaks[i,1:length(breaks)]=breaks
+  testwin=window(a,breaks=unique(breaks))
+  print(breaks)
+  winnum[i] = length(levels(testwin))
+  
+}
+
+hist(winnum); table(winnum); mean(winnum)
+cat('mean window length', 20/mean(winnum))
+
+
+print('mean')
+apply(cum.breaks,2,mean,na.rm=TRUE)
+print('max')
+apply(cum.breaks[,1:19],2,max,na.rm=TRUE)
+print('min')
+apply(cum.breaks[,1:19],2,min,na.rm=TRUE)
+

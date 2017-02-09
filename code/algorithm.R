@@ -72,7 +72,8 @@ cat('Estimated hours:',models/60/60)
 #y1 - y4 for scenarios
 #s1 - s4 are "actual" for scenarios
 #y=tdat$y1
-y=tdat$y1
+dv='y2'
+y=tdat[,dv]
 tdat$c=tdat$p-tdat$a
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
@@ -205,7 +206,7 @@ for(d in c('a','p','c')){
   preds[[d]]$down = rng[1,]
   #s1-s4 are for scenarios --- needs to match with y1-y4
   #preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
-  preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
+  preds[[d]]$actual=pltdat[[d]]$s2[order(pltdat[[d]]$id)]
   preds[[d]]$id=pltdat[[d]]$id[order(pltdat[[d]]$id)]
   
   
@@ -382,13 +383,13 @@ sink(paste0(outdir,'mean-fit-posterior-pval.txt'),type=c('output','message'))
 
 #omnibus bayesian pvalues
 print('Summary of acutal to posterior')
-print(summary(tdat$y1))
+print(summary(tdat[,dv]))
 print(summary(as.vector(ytilde)))
 
 #mean
 print('omnibus bayesian p-value of mean')
-sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
-#sum(apply(ytilde,2,max)<max(tdat$y2))/ncol(ytilde)
+#sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
+sum(apply(ytilde,2,max)<max(tdat[,'dv']))/ncol(ytilde)
 #sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
 
 

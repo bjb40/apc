@@ -93,6 +93,8 @@ uns = list(
 
 pltdat=list()
 
+#need to hold means for margins (i.e. margins command in stata)??
+
 for(d in c('a','p','c')){
   pltdat[[d]] = data.frame(id=uns[[d]], 
                       s1 = uns[[d]] * t.beta[1,d] + uns[[d]]^2 * t.beta[1,paste0(d,'2')],
