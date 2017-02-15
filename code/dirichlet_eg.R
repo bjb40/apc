@@ -85,6 +85,7 @@ cum.breaks=matrix(as.numeric(NA),1000,20)
 
 
 p=rep(.5,20) # can draw from a proposal support between 0 and 1
+#can also use this to sample breaks
 
 for(i in 1:1000){
   equ.draws = runif(20)

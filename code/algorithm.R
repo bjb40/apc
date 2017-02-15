@@ -25,13 +25,14 @@ load(paste0(datdir,'testdat.RData'))
 lin_gibbs = function(y,x){
   iter = 1000
   
-  ll=r2=s2=matrix(1,iter)
+  rmse=ll=r2=s2=matrix(1,iter)
   b= matrix(0,iter,ncol(x))
   yhat=matrix(0,length(y))
   xtxi = solve(t(x)%*%x)
   m=lm(y~x-1)
   pars=coefficients(m)
   res=residuals(m)
+  n=length(y)
   
   #simulate sigma from inverse gamma marginal -- inefficient!
   #s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(residuals(lm(y~x-1)))%*%residuals(lm(y~x-1)))
@@ -48,6 +49,7 @@ lin_gibbs = function(y,x){
     sse = sum((y-(yhat))^2)
     sst = sum((y-mean(y))^2)
     r2[i] = 1-(sse/sst)
+    rmse[i] = sqrt(sse/n)
     ll[i]=sum(dnorm(y,mean=yhat,sd=s2[i],log=TRUE))
     
     #ppd[i,] = yhat + rnorm(length(y),mean=0,sd=s2[i])
@@ -61,7 +63,7 @@ lin_gibbs = function(y,x){
   #bic prime "provides an assessment of whether the model is explaining enough
   #variation to justify the number of parameters it's using..."
   ###p. 135, Eq. 26 from Rafferty 1995 (SMR)
-  n=length(y)
+
   bic_prime=n*log(1-mean(r2))+(ncol(x)-1)*log(n)
   #bic equation ...eq 23 http://www.stat.washington.edu/raftery/Research/PDF/kass1995.pdf
   bic=-2*mean(ll)+log(n)*ncol(x)
@@ -69,7 +71,8 @@ lin_gibbs = function(y,x){
   #bic=-2*mean(ll)+ncol(x)*(log(n-log(2*pi))) -- large n .. ?
   #bic=log(n)*ncol(x)-2*mean(ll)
   
-  return(list(betas=b,sigma=s2,r2=r2,bic=bic,bic_prime=bic_prime,ll=ll))
+  #sigma is poorly named
+  return(list(betas=b,sigma=s2,r2=r2,rmse=rmse,bic=bic,bic_prime=bic_prime,ll=ll))
 
 }#end linear gibbs
 
@@ -83,8 +86,8 @@ lin_gibbs = function(y,x){
 ####
 
 #calculate time; based on 1 second per calculation
-models=6^3
-cat('Estimated hours:',models/60/60)
+#models=6^3
+#cat('Estimated hours:',models/60/60)
 
 #y1 - y4 for scenarios
 #s1 - s4 are "actual" for scenarios
@@ -99,7 +102,7 @@ tm=Sys.time()
 avtm=0
 
 #set of numbers for window widths
-sampframe=c(0,1,5)
+sampframe=c(0,1,3,5,10)
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
 
 for(age_w in sampframe){
@@ -285,10 +288,12 @@ k = min(bics_prime)
 d=-.5*(bics_prime-k)
 w_prime=exp(d)/sum(exp(d))
 
+
 #add weight to apc windows dataframe
 win$wt=w; win$w_prime=w_prime; win$r2=r2; win$bic=bics; win$bic_prime=bics_prime
-#rmse: http://statweb.stanford.edu/~susan/courses/s60/split/node60.html
-win$rmse = sqrt(1-win$r2); win$rmsewt = win$rmse/sum(win$rmse)
+win$rmse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse))) 
+#inverse weight by rmse (larger values are smaller weights)
+win$rmsewt = 1/win$rmse/sum(1/win$rmse)
 
 win$modnum=1:nrow(win)
 
