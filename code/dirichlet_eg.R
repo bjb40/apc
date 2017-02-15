@@ -1,5 +1,6 @@
 ##https://www.r-bloggers.com/dirichlet-process-infinite-mixture-models-and-clustering/
 
+par(mfrow=c(2,2))
 
 #higher alpha leads to higher probability of lower values
 stick_draw = function(num.vals, alpha) {
@@ -47,7 +48,7 @@ for(i in 1:1000){
   a=1:20
   winprob=1-(mean.wins/max(a))
   partition=runif(19)>winprob
-  if(!any(partition)){next} #skipp cases with no breaks (could add as continuous...)
+  if(!any(partition)){next} #skip cases with no breaks (could add as continuous...)
   breaks=which(partition==TRUE)
   cum.breaks[i,1:length(breaks)]=breaks
   testwin=window(a,breaks=c(0,breaks,max(a)))
@@ -88,7 +89,7 @@ p=rep(.5,20) # can draw from a proposal support between 0 and 1
 for(i in 1:1000){
   equ.draws = runif(20)
   partition = p>equ.draws
-  if(!any(partition)){next} #skipp cases with no breaks (could add as continuous...)
+  if(!any(partition)){next} #skip cases with no breaks (could add as continuous...)
   breaks=c(0,which(partition==TRUE),20)
   print(breaks)  
   cum.breaks[i,1:length(breaks)]=breaks

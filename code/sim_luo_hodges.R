@@ -94,14 +94,23 @@ uns = list(
 pltdat=list()
 
 #need to hold means for margins (i.e. margins command in stata)??
+dims=c('a','p','c')
 
-for(d in c('a','p','c')){
-  pltdat[[d]] = data.frame(id=uns[[d]], 
-                      s1 = uns[[d]] * t.beta[1,d] + uns[[d]]^2 * t.beta[1,paste0(d,'2')],
-                      s2 = uns[[d]] * t.beta[2,d] + uns[[d]]^2 * t.beta[2,paste0(d,'2')],
-                      s3 = uns[[d]] * t.beta[3,d] + uns[[d]]^2 * t.beta[3,paste0(d,'2')],
-                      s4 = uns[[d]] * t.beta[4,d] + uns[[d]]^2 * t.beta[4,paste0(d,'2')] 
-                      )
+for(d in dims){
+  o.dims = dims[which(!dims==d)]
+  o.means=apply(dat[,o.dims],2,mean)
+  xdat=data.frame(uns[[d]],o.means[1],o.means[2]); colnames(xdat)=c(d,o.dims)
+  xdat$a2 = xdat$a^2; xdat$p2 = xdat$p^2; xdat$c2 = xdat$c^2
+  x = as.matrix(xdat)
+  b = as.matrix(t.beta)[,colnames(x)]
+  
+  #test for matching
+  if(!all(colnames(x) == colnames(b))){stop('Problem with matrix ordering.')}
+
+  pltdat[[d]] = as.data.frame(x %*% t(b)); 
+  colnames(pltdat[[d]]) = paste0('s',1:4)
+  
+  pltdat[[d]]$id = uns[[d]] 
 
 }
 

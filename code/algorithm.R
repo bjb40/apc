@@ -1,8 +1,14 @@
 ###
 
+
 #clear cache
 rm(list=ls())
 source('config~.R')
+
+
+#prelim
+dv='y1'
+actual='s1'
 
 
 #load test data
@@ -25,7 +31,7 @@ lin_gibbs = function(y,x){
   xtxi = solve(t(x)%*%x)
   pars=coefficients(lm(y~x-1))
   
-  #simulate sigma from inverse gamma marginal
+  #simulate sigma from inverse gamma marginal -- inefficient!
   s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(residuals(lm(y~x-1)))%*%residuals(lm(y~x-1)))
   
   #set ppd
@@ -39,7 +45,7 @@ lin_gibbs = function(y,x){
     sse = sum((y-(yhat))^2)
     sst = sum((y-mean(y))^2)
     r2[i] = 1-(sse/sst)
-    ll[i]=sum(dnorm(y,mean=y-(yhat),sd=s2[i],log=TRUE))
+    ll[i]=sum(dnorm(y,mean=yhat,sd=s2[i],log=TRUE))
     
     #ppd[i,] = yhat + rnorm(length(y),mean=0,sd=s2[i])
     
@@ -47,10 +53,18 @@ lin_gibbs = function(y,x){
   
   colnames(b) = colnames(x)
   ###BIC estimate for Bayes Factor (posterior probability weight)
+  #p. 135 explains the differnce between bic and bic_prime
+  #bic is "overall model fit" where 
+  #bic prime "provides an assessment of whether the model is explaining enough
+  #variation to justify the number of parameters it's using..."
   ###p. 135, Eq. 26 from Rafferty 1995 (SMR)
   n=length(y)
   bic_prime=n*log(1-mean(r2))+(ncol(x)-1)*log(n)
-  bic=2*mean(ll)+ncol(x)*log(n)
+  #bic equation 21 from raferty
+  
+  #bic equation from... [wikepedia]
+  #bic=-2*mean(ll)+ncol(x)*(log(n-log(2*pi))) -- large n .. ?
+  #bic=log(n)*ncol(x)-2*mean(ll)
   
   return(list(betas=b,sigma=s2,r2=r2,bic=bic,bic_prime=bic_prime,ll=ll))
 
@@ -72,7 +86,7 @@ cat('Estimated hours:',models/60/60)
 #y1 - y4 for scenarios
 #s1 - s4 are "actual" for scenarios
 #y=tdat$y1
-dv='y2'
+
 y=tdat[,dv]
 tdat$c=tdat$p-tdat$a
 
@@ -197,8 +211,11 @@ load(paste0(datdir,'luo_sim_fits.RData'))
 best.plt = list()
 preds = list()
 
-for(d in c('a','p','c')){
+#need to make dynamic!!
 
+#for(d in c('a','p','c')){
+for(d in c('a','p')){
+    
   preds[[d]]=as.data.frame(apply(effects[[best]][[d]],2,mean))
   colnames(preds[[d]])='est'
   rng=apply(effects[[best]][[d]],2,quantile,c(0.025,0.975))
@@ -206,7 +223,7 @@ for(d in c('a','p','c')){
   preds[[d]]$down = rng[1,]
   #s1-s4 are for scenarios --- needs to match with y1-y4
   #preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
-  preds[[d]]$actual=pltdat[[d]]$s2[order(pltdat[[d]]$id)]
+  preds[[d]]$actual=pltdat[[d]][order(pltdat[[d]]$id),actual]
   preds[[d]]$id=pltdat[[d]]$id[order(pltdat[[d]]$id)]
   
   
@@ -227,30 +244,42 @@ for(d in c('a','p','c')){
 
 #pdf(file=paste0(imdir,'best-fit.pdf'))
 
-grid.arrange(best.plt[['a']],
-            best.plt[['p']],
-            best.plt[['c']],
-            ncol=3)
+pltrange=range(unlist(
+  lapply(preds,function(x) range(x %>% select(-id)))
+))
+
+grid.arrange(best.plt[['a']] + ylim(pltrange),
+            best.plt[['p']] + ylim(pltrange),
+            #best.plt[['c']] + ylim(pltrange),
+            ncol=2)
 
 #dev.off()
 
 ##post-processing -- model averaging
 #averaging algorithm from ... eq 35 from Rafferty SMR
+#http://scicomp.stackexchange.com/questions/1122/how-to-add-large-exponential-terms-reliably-without-overflow-errors
+#http://stats.stackexchange.com/questions/249888/use-bic-or-aic-as-approximation-for-bayesian-model-averaging
+#fixing overflow issue from suggestion above after logging to take difference
 
-#w = exp(-.5*bics)/sum(exp(-.5*bics))
+#w = exp(-.5*bics)/sum(exp(-.5*bics)))
 #w_prime=exp(-.5*bics_prime)/sum(exp(-.5*bics_prime))
 
-#there are severe underflow problems.... since this is just a proportionality issue
-#/changing proportion (should be .5)
-prop=0.000005
-w = exp(prop*bics)/sum(exp(prop*bics))
+#sbics = bics[order(bics)][1:10]
+
+k=min(bics)
+d=-.5*(bics-k)
+w=exp(d)/sum(exp(d))
+
+k = min(bics_prime)
+d=-.5*(bics_prime-k)
+w_prime=exp(d)/sum(exp(d))
 
 for(m in seq_along(effects)){
   effects[[m]]$w=w[m]
 }
 
 #add weight to apc windows dataframe
-win$wt=w
+win$wt=w; win$w_prime=w_prime; win$r2=r2; win$bic=bics; win$bic_prime=bics_prime
 win$modnum=1:nrow(win)
 
 #print weighted mean of windows...
@@ -323,6 +352,10 @@ preds[[d]]$m_up=rowSums(
 #predsm=preds[,! colnames(preds) %in% c('up','down')]
 #pp=melt(predsm,id='cohort')
 
+pltrange=range(unlist(
+  lapply(preds,function(x) range(x %>% select(-id)))
+))
+
 mean.plt[[d]]=ggplot(preds[[d]],
          aes_string(y='m_est',x='id')) + 
          geom_point() + 
@@ -334,9 +367,9 @@ mean.plt[[d]]=ggplot(preds[[d]],
 
 #pdf(file=paste0(imdir,'mean-fit.pdf'))
 
-grid.arrange(mean.plt[['a']],
-             mean.plt[['p']],
-             mean.plt[['c']],
+grid.arrange(mean.plt[['a']] + ylim(pltrange),
+             mean.plt[['p']] + ylim(pltrange),
+             #mean.plt[['c']] + ylim(pltrange),
              ncol=3)
 
 #dev.off()
@@ -389,7 +422,7 @@ print(summary(as.vector(ytilde)))
 #mean
 print('omnibus bayesian p-value of mean')
 #sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
-sum(apply(ytilde,2,max)<max(tdat[,'dv']))/ncol(ytilde)
+sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
 #sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
 
 
@@ -430,9 +463,46 @@ sapply(seq_along(actual.age[[1]]),function(i)
 )
 sink()
 
-pdf(paste0(imdir,'mean-fit-post.pdf'))
+
+predy.age = apply(ytilde.age,1,function(x)
+  c(mean=mean(x),up=quantile(x,0.975),low=quantile(x,0.025)))
+predy.age = as.data.frame(t(predy.age))
+predy.age$a = c(1:nrow(predy.age)); colnames(predy.age) = c('mean','up','low','a')
+
+predy.period = apply(ytilde.period,1,function(x)
+  c(mean=mean(x),up=quantile(x,0.975),low=quantile(x,0.025)))
+predy.period = as.data.frame(t(predy.period))
+predy.period$p = c(1:nrow(predy.period)); colnames(predy.period) = c('mean','up','low','p')
+
+ggplot(predy.period,aes(x=p,y=mean)) + 
+  geom_boxplot(data=tdat, aes(x=p,y=y,group=p),alpha=.05) +
+  geom_line() + 
+  geom_ribbon(aes(ymin=low,ymax=up),alpha=.4) 
+  
+
+
+#print(act)
+
+#predict = ggplot(ytilde.age, aes())
+
+
+
+#pdf(paste0(imdir,'mean-fit-post.pdf')) --conditional??
 par(mfrow=c(1,3))
 plot(actual.age,type='l'); lines(actual.age[[1]],apply(ytilde.age,1,mean),type='p')
 plot(actual.period,type='l'); lines(actual.period[[1]],apply(ytilde.period,1,mean),type='p')
 plot(actual.cohort,type='l'); lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean),type='p')
-dev.off()
+#dev.off()
+
+####
+#testing of final model
+
+fin.bayes=allmods[[length(allmods)]]
+fin.freq = lm(tdat[,dv]~model.matrix(~.,x))
+
+print(summary(fin.freq)$r.squared)
+print(mean(fin.bayes$r2))
+
+print(logLik(fin.freq))
+print(mean(fin.bayes$ll))
+
