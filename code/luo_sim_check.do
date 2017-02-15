@@ -62,6 +62,8 @@ marginsplot
 
 import delimited using "H:/projects/apc/output/sim_data/tdat.csv", clear
 
+gen c = p-a
+
 gen newc = c+20
 
 egen cfac = cut(newc), at(-20(2)20)
@@ -75,6 +77,9 @@ marginsplot
 reg y1 c.a##c.a c.p##c.p c.a#c.p
 margins, dydx(a) at(a=(1(1)20)) atmeans
 marginsplot
+
+/*specialized measurement model*/
+mixed y1 a p c || c:
 
 reg y4 c.a##c.a c.p##c.p
 margins, dydx(a) at(a=(1(1)20)) atmeans

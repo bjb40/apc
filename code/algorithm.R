@@ -398,6 +398,7 @@ dev.off()
 ##posterior for mean effects
 
 #draw list for posterior sample
+#post.size=10000
 post.size=1000
 ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
 post.mods = sample(win$modnum,size=post.size,
@@ -422,6 +423,9 @@ for(i in seq_along(post.mods)){
   xhat = model.matrix(~.,xhat)
   
   #draw single set of betas and calculate yhat
+  #these betas might be good to use for estimating
+  #the mean and standard error (instead of the weighted avgs 
+  #above)
   b = allmods[[i.win$modnum]]$beta[sample(1:1000,1),]
   s2 = allmods[[i.win$modnum]]$sigma
   ytilde[,i] = xhat %*% b + rnorm(nrow(xhat),mean=0,sd=s2)
@@ -494,24 +498,45 @@ predy.period = apply(ytilde.period,1,function(x)
 predy.period = as.data.frame(t(predy.period))
 predy.period$p = c(1:nrow(predy.period)); colnames(predy.period) = c('mean','up','low','p')
 
+predy.cohort = apply(ytilde.cohort,1,function(x)
+  c(mean=mean(x),up=quantile(x,0.975),low=quantile(x,0.025)))
+predy.cohort = as.data.frame(t(predy.cohort))
+predy.cohort$c = c(1:nrow(predy.cohort)); colnames(predy.cohort) = c('mean','up','low','c')
+
+
+ggplot(predy.age,aes(x=a,y=mean)) + 
+  geom_boxplot(data=tdat, aes(x=a,y=y,group=a),alpha=.05) +
+  geom_line() + 
+  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
+
 ggplot(predy.period,aes(x=p,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=p,y=y,group=p),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
   
+ggplot(predy.cohort,aes(x=c,y=mean)) + 
+  geom_boxplot(data=tdat, aes(x=c+20,y=y,group=c),alpha=.05) +
+  geom_line() + 
+  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
 
 #print(act)
 
 #predict = ggplot(ytilde.age, aes())
 
-
+#should do this dynamicall...
+yl=range(c(actual.age$x,
+             actual.period$x,
+             actual.cohort$x))
 
 pdf(paste0(imdir,'mean-fit-post.pdf')) #--conditional??
   par(mfrow=c(1,3))
-  plot(actual.age,type='l'); lines(actual.age[[1]],apply(ytilde.age,1,mean),type='p')
-  plot(actual.period,type='l'); lines(actual.period[[1]],apply(ytilde.period,1,mean),type='p')
-  plot(actual.cohort,type='l'); lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean),type='p')
+  plot(actual.age,type='l',ylim=yl);
+    lines(actual.age[[1]],apply(ytilde.age,1,mean),type='p')
+  plot(actual.period,type='l',ylim=yl); 
+    lines(actual.period[[1]],apply(ytilde.period,1,mean),type='p')
+  plot(actual.cohort,type='l',ylim=yl); 
+    lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean),type='p')
 dev.off()
 
 ####
@@ -529,3 +554,11 @@ print(mean(fin.bayes$ll))
 print(
   sum(dnorm(y,mean=predict(fin.freq),sd=mean(fin.bayes$sigma),log=TRUE))
 )
+
+window.summary =  win %>% select(a,p,c) %>%
+    summarize_each(funs(
+      m.wn=mean(.),
+      rmse.win=weighted.mean(.,w=win$rmsewt),
+      bic.win=weighted.mean(.,w=win$wt),
+      bic_prime.win=weighted.mean(.,w=win$w_prime))
+      ) 
