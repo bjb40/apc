@@ -190,7 +190,7 @@ bics=unlist(lapply(effects,FUN=function(x) x$bic))
 bics_prime=unlist(lapply(allmods,FUN=function(x) x$bic_prime))
 r2=unlist(lapply(allmods,FUN=function(x) mean(x$r2)))
 
-best=which(bics==min(bics))
+best=which(bics_prime==min(bics_prime))
 
 print(
   t(
@@ -214,7 +214,13 @@ preds = list()
 #need to make dynamic!!
 
 #for(d in c('a','p','c')){
-for(d in c('a','p')){
+for(d in c('a','p','c')){
+  if(effects[[best]][[d]]==0){
+    effects[[best]][[d]]=matrix(0,1000,20)
+    if(d == 'c'){
+      effects[[best]][[d]]=cbind(effects[[best]][[d]],matrix(0,1000,19))
+    }
+  }
     
   preds[[d]]=as.data.frame(apply(effects[[best]][[d]],2,mean))
   colnames(preds[[d]])='est'
@@ -250,8 +256,8 @@ pltrange=range(unlist(
 
 grid.arrange(best.plt[['a']] + ylim(pltrange),
             best.plt[['p']] + ylim(pltrange),
-            #best.plt[['c']] + ylim(pltrange),
-            ncol=2)
+            best.plt[['c']] + ylim(pltrange),
+            ncol=3)
 
 #dev.off()
 
@@ -274,13 +280,14 @@ k = min(bics_prime)
 d=-.5*(bics_prime-k)
 w_prime=exp(d)/sum(exp(d))
 
-for(m in seq_along(effects)){
-  effects[[m]]$w=w[m]
-}
-
 #add weight to apc windows dataframe
 win$wt=w; win$w_prime=w_prime; win$r2=r2; win$bic=bics; win$bic_prime=bics_prime
 win$modnum=1:nrow(win)
+
+#select weight
+for(m in seq_along(effects)){
+  effects[[m]]$w=win$w_prime[m]
+}
 
 #print weighted mean of windows...
 print(
@@ -369,7 +376,7 @@ mean.plt[[d]]=ggplot(preds[[d]],
 
 grid.arrange(mean.plt[['a']] + ylim(pltrange),
              mean.plt[['p']] + ylim(pltrange),
-             #mean.plt[['c']] + ylim(pltrange),
+             mean.plt[['c']] + ylim(pltrange),
              ncol=3)
 
 #dev.off()
@@ -477,7 +484,7 @@ predy.period$p = c(1:nrow(predy.period)); colnames(predy.period) = c('mean','up'
 ggplot(predy.period,aes(x=p,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=p,y=y,group=p),alpha=.05) +
   geom_line() + 
-  geom_ribbon(aes(ymin=low,ymax=up),alpha=.4) 
+  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
   
 
 
@@ -506,3 +513,6 @@ print(mean(fin.bayes$r2))
 print(logLik(fin.freq))
 print(mean(fin.bayes$ll))
 
+print(
+  sum(dnorm(y,mean=predict(fin.freq),sd=mean(fin.bayes$sigma),log=TRUE))
+)
