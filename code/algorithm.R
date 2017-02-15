@@ -29,10 +29,13 @@ lin_gibbs = function(y,x){
   b= matrix(0,iter,ncol(x))
   yhat=matrix(0,length(y))
   xtxi = solve(t(x)%*%x)
-  pars=coefficients(lm(y~x-1))
+  m=lm(y~x-1)
+  pars=coefficients(m)
+  res=residuals(m)
   
   #simulate sigma from inverse gamma marginal -- inefficient!
-  s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(residuals(lm(y~x-1)))%*%residuals(lm(y~x-1)))
+  #s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(residuals(lm(y~x-1)))%*%residuals(lm(y~x-1)))
+  s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(res)%*%res)
   
   #set ppd
   ppd = matrix(0,iter,length(y))
@@ -60,8 +63,8 @@ lin_gibbs = function(y,x){
   ###p. 135, Eq. 26 from Rafferty 1995 (SMR)
   n=length(y)
   bic_prime=n*log(1-mean(r2))+(ncol(x)-1)*log(n)
-  #bic equation 21 from raferty
-  
+  #bic equation ...eq 23 http://www.stat.washington.edu/raftery/Research/PDF/kass1995.pdf
+  bic=-2*mean(ll)+log(n)*ncol(x)
   #bic equation from... [wikepedia]
   #bic=-2*mean(ll)+ncol(x)*(log(n-log(2*pi))) -- large n .. ?
   #bic=log(n)*ncol(x)-2*mean(ll)
