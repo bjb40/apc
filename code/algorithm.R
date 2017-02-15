@@ -287,16 +287,21 @@ w_prime=exp(d)/sum(exp(d))
 
 #add weight to apc windows dataframe
 win$wt=w; win$w_prime=w_prime; win$r2=r2; win$bic=bics; win$bic_prime=bics_prime
+#rmse: http://statweb.stanford.edu/~susan/courses/s60/split/node60.html
+win$rmse = sqrt(1-win$r2); win$rmsewt = win$rmse/sum(win$rmse)
+
 win$modnum=1:nrow(win)
 
 #select weight
+use.wt='rmsewt'
+
 for(m in seq_along(effects)){
-  effects[[m]]$w=win$w_prime[m]
+  effects[[m]]$w=win[,use.wt][m]
 }
 
 #print weighted mean of windows...
 print(
-  apply(win[,c('a','p','c')],2,weighted.mean,w=win$wt)
+  apply(win[,c('a','p','c')],2,weighted.mean,w=win[,use.wt])
 )
 
 #weighted mean
@@ -431,8 +436,8 @@ print(summary(as.vector(ytilde)))
 
 #mean
 print('omnibus bayesian p-value of mean')
-#sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
-sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
+sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
+#sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
 #sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
 
 
