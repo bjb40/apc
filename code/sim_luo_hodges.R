@@ -53,7 +53,7 @@ n=nrow(dat)
 #id true betas for 4 scenarios (eq. 8-11)
 
 t.beta=data.frame(
-  a=0.3,a2=-0.01,p=0.04,p2=0.02,c=0.35,c2=-0.0015
+  a=0.3,a2=-0.01,p=-0.04,p2=0.02,c=0.35,c2=-0.0015
 )
 t.beta[2,] = t.beta[1,]; t.beta[2,c('a','a2')]=0
 t.beta[3,] = t.beta[1,]; t.beta[3,c('p','p2')]=0
