@@ -98,9 +98,11 @@ effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
 
+#set of numbers for window widths
+sampframe=c(0,1,5)
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
 
-for(age_w in 0:5){
+for(age_w in sampframe){
   
   #reset dataframe
   x=tdat[,c('a','p','c')]
@@ -111,7 +113,7 @@ for(age_w in 0:5){
     x$a=window(tdat$a,winlength=age_w)
   }
 
-  for(period_w in 0:5){
+  for(period_w in sampframe){
 
     if(period_w==0){
       x = x[!colnames(x) == 'p']
@@ -119,7 +121,7 @@ for(age_w in 0:5){
       x$p=window(tdat$p,winlength=period_w)
     }
     
-    for(cohort_w in 0:5){
+    for(cohort_w in sampframe){
 
       if(cohort_w==0){
         x = x[!colnames(x) == 'c']
@@ -251,18 +253,18 @@ for(d in c('a','p','c')){
   
 }
 
-#pdf(file=paste0(imdir,'best-fit.pdf'))
+pdf(file=paste0(imdir,'best-fit.pdf'))
 
-pltrange=range(unlist(
-  lapply(preds,function(x) range(x %>% select(-id)))
-))
+  pltrange=range(unlist(
+    lapply(preds,function(x) range(x %>% select(-id)))
+  ))
+  
+  grid.arrange(best.plt[['a']] + ylim(pltrange),
+              best.plt[['p']] + ylim(pltrange),
+              best.plt[['c']] + ylim(pltrange),
+              ncol=3)
 
-grid.arrange(best.plt[['a']] + ylim(pltrange),
-            best.plt[['p']] + ylim(pltrange),
-            best.plt[['c']] + ylim(pltrange),
-            ncol=3)
-
-#dev.off()
+dev.off()
 
 ##post-processing -- model averaging
 #averaging algorithm from ... eq 35 from Rafferty SMR
@@ -330,8 +332,6 @@ wtquant=function(l,var,w,q){
 }
 
 
-####plot means ... [[HERE!!]]
-
 mean.plt=list()
 
 for(d in names(preds)){
@@ -375,14 +375,14 @@ mean.plt[[d]]=ggplot(preds[[d]],
        
 }
 
-#pdf(file=paste0(imdir,'mean-fit.pdf'))
+pdf(file=paste0(imdir,'mean-fit.pdf'))
 
-grid.arrange(mean.plt[['a']] + ylim(pltrange),
-             mean.plt[['p']] + ylim(pltrange),
-             mean.plt[['c']] + ylim(pltrange),
-             ncol=3)
+  grid.arrange(mean.plt[['a']] + ylim(pltrange),
+               mean.plt[['p']] + ylim(pltrange),
+               mean.plt[['c']] + ylim(pltrange),
+               ncol=3)
 
-#dev.off()
+dev.off()
 
 
 ##posterior for mean effects
@@ -497,12 +497,12 @@ ggplot(predy.period,aes(x=p,y=mean)) +
 
 
 
-#pdf(paste0(imdir,'mean-fit-post.pdf')) --conditional??
-par(mfrow=c(1,3))
-plot(actual.age,type='l'); lines(actual.age[[1]],apply(ytilde.age,1,mean),type='p')
-plot(actual.period,type='l'); lines(actual.period[[1]],apply(ytilde.period,1,mean),type='p')
-plot(actual.cohort,type='l'); lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean),type='p')
-#dev.off()
+pdf(paste0(imdir,'mean-fit-post.pdf')) #--conditional??
+  par(mfrow=c(1,3))
+  plot(actual.age,type='l'); lines(actual.age[[1]],apply(ytilde.age,1,mean),type='p')
+  plot(actual.period,type='l'); lines(actual.period[[1]],apply(ytilde.period,1,mean),type='p')
+  plot(actual.cohort,type='l'); lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean),type='p')
+dev.off()
 
 ####
 #testing of final model

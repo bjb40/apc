@@ -110,3 +110,38 @@ apply(cum.breaks[,1:19],2,max,na.rm=TRUE)
 print('min')
 apply(cum.breaks[,1:19],2,min,na.rm=TRUE)
 
+
+####
+#equality constraints sampler; i.e. sampling "breaks" directly
+winnum=matrix(0,1000,1)
+cum.breaks=matrix(as.numeric(NA),1000,20)
+
+n.constraints=3
+for(i in 1:1000){
+  #set uniform partition
+  partition = rep(TRUE,length(a)-1)
+  #draw random constraints based on n.constraints, 
+  #i.e. 1 constraint = equal to the next beta (behind may be more natural)
+  partition[sample(head(a,-1),n.constraints)] = FALSE
+  if(!any(partition)){next} #skip cases with no breaks (could add as continuous...)
+  breaks=c(0,which(partition==TRUE),20)
+  print(breaks)  
+  cum.breaks[i,1:length(breaks)]=breaks
+  testwin=window(a,breaks=unique(breaks))
+  print(breaks)
+  winnum[i] = length(levels(testwin))
+  
+}
+
+hist(winnum); table(winnum); mean(winnum)
+cat('mean window length', 20/mean(winnum))
+
+
+print('mean')
+apply(cum.breaks,2,mean,na.rm=TRUE)
+print('max')
+apply(cum.breaks[,1:19],2,max,na.rm=TRUE)
+print('min')
+apply(cum.breaks[,1:19],2,min,na.rm=TRUE)
+
+sum(!duplicated(cum.breaks),margin=1)

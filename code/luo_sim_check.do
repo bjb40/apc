@@ -56,3 +56,26 @@ reg y2 c.a##c.a c.p##c.p c.xcor##c.xcor
 margins, at(xcor=(-20(1)20) p=(10.5) a=(10.5))
 marginsplot
 
+*@@@@@@@@@@@@@
+*Checking M1
+*@@@@@@@@@@@@@@
+
+import delimited using "H:/projects/apc/output/sim_data/tdat.csv", clear
+
+gen newc = c+20
+
+egen cfac = cut(newc), at(-20(2)20)
+
+reg y1 i.a i.p i.cfac
+
+margins i.a /*why does this look wrong!?*/
+marginsplot
+
+/*this works from the yellow paper calculations*/
+reg y1 c.a##c.a c.p##c.p c.a#c.p
+margins, dydx(a) at(a=(1(1)20)) atmeans
+marginsplot
+
+reg y4 c.a##c.a c.p##c.p
+margins, dydx(a) at(a=(1(1)20)) atmeans
+marginsplot
