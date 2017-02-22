@@ -25,13 +25,14 @@ load(paste0(datdir,'testdat.RData'))
 lin_gibbs = function(y,x){
   iter = 1000
   
-  ll=r2=s2=matrix(1,iter)
+  rmse=ll=r2=s2=matrix(1,iter)
   b= matrix(0,iter,ncol(x))
   yhat=matrix(0,length(y))
   xtxi = solve(t(x)%*%x)
   m=lm(y~x-1)
   pars=coefficients(m)
   res=residuals(m)
+  n=length(y)
   
   #simulate sigma from inverse gamma marginal -- inefficient!
   #s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(residuals(lm(y~x-1)))%*%residuals(lm(y~x-1)))
@@ -48,6 +49,7 @@ lin_gibbs = function(y,x){
     sse = sum((y-(yhat))^2)
     sst = sum((y-mean(y))^2)
     r2[i] = 1-(sse/sst)
+    rmse[i] = sqrt(sse/n)
     ll[i]=sum(dnorm(y,mean=yhat,sd=s2[i],log=TRUE))
     
     #ppd[i,] = yhat + rnorm(length(y),mean=0,sd=s2[i])
@@ -61,7 +63,7 @@ lin_gibbs = function(y,x){
   #bic prime "provides an assessment of whether the model is explaining enough
   #variation to justify the number of parameters it's using..."
   ###p. 135, Eq. 26 from Rafferty 1995 (SMR)
-  n=length(y)
+
   bic_prime=n*log(1-mean(r2))+(ncol(x)-1)*log(n)
   #bic equation ...eq 23 http://www.stat.washington.edu/raftery/Research/PDF/kass1995.pdf
   bic=-2*mean(ll)+log(n)*ncol(x)
@@ -69,7 +71,8 @@ lin_gibbs = function(y,x){
   #bic=-2*mean(ll)+ncol(x)*(log(n-log(2*pi))) -- large n .. ?
   #bic=log(n)*ncol(x)-2*mean(ll)
   
-  return(list(betas=b,sigma=s2,r2=r2,bic=bic,bic_prime=bic_prime,ll=ll))
+  #sigma is poorly named
+  return(list(betas=b,sigma=s2,r2=r2,rmse=rmse,bic=bic,bic_prime=bic_prime,ll=ll))
 
 }#end linear gibbs
 
@@ -83,8 +86,8 @@ lin_gibbs = function(y,x){
 ####
 
 #calculate time; based on 1 second per calculation
-models=6^3
-cat('Estimated hours:',models/60/60)
+#models=6^3
+#cat('Estimated hours:',models/60/60)
 
 #y1 - y4 for scenarios
 #s1 - s4 are "actual" for scenarios
@@ -98,9 +101,11 @@ effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
 
+#set of numbers for window widths
+sampframe=c(0,1,3,5,10)
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
 
-for(age_w in 0:5){
+for(age_w in sampframe){
   
   #reset dataframe
   x=tdat[,c('a','p','c')]
@@ -111,7 +116,7 @@ for(age_w in 0:5){
     x$a=window(tdat$a,winlength=age_w)
   }
 
-  for(period_w in 0:5){
+  for(period_w in sampframe){
 
     if(period_w==0){
       x = x[!colnames(x) == 'p']
@@ -119,7 +124,7 @@ for(age_w in 0:5){
       x$p=window(tdat$p,winlength=period_w)
     }
     
-    for(cohort_w in 0:5){
+    for(cohort_w in sampframe){
 
       if(cohort_w==0){
         x = x[!colnames(x) == 'c']
@@ -251,18 +256,18 @@ for(d in c('a','p','c')){
   
 }
 
-#pdf(file=paste0(imdir,'best-fit.pdf'))
+pdf(file=paste0(imdir,'best-fit.pdf'))
 
-pltrange=range(unlist(
-  lapply(preds,function(x) range(x %>% select(-id)))
-))
+  pltrange=range(unlist(
+    lapply(preds,function(x) range(x %>% select(-id)))
+  ))
+  
+  grid.arrange(best.plt[['a']] + ylim(pltrange),
+              best.plt[['p']] + ylim(pltrange),
+              best.plt[['c']] + ylim(pltrange),
+              ncol=3)
 
-grid.arrange(best.plt[['a']] + ylim(pltrange),
-            best.plt[['p']] + ylim(pltrange),
-            best.plt[['c']] + ylim(pltrange),
-            ncol=3)
-
-#dev.off()
+dev.off()
 
 ##post-processing -- model averaging
 #averaging algorithm from ... eq 35 from Rafferty SMR
@@ -283,18 +288,25 @@ k = min(bics_prime)
 d=-.5*(bics_prime-k)
 w_prime=exp(d)/sum(exp(d))
 
+
 #add weight to apc windows dataframe
 win$wt=w; win$w_prime=w_prime; win$r2=r2; win$bic=bics; win$bic_prime=bics_prime
+win$rmse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse))) 
+#inverse weight by rmse (larger values are smaller weights)
+win$rmsewt = 1/win$rmse/sum(1/win$rmse)
+
 win$modnum=1:nrow(win)
 
 #select weight
+use.wt='rmsewt'
+
 for(m in seq_along(effects)){
-  effects[[m]]$w=win$w_prime[m]
+  effects[[m]]$w=win[,use.wt][m]
 }
 
 #print weighted mean of windows...
 print(
-  apply(win[,c('a','p','c')],2,weighted.mean,w=win$wt)
+  apply(win[,c('a','p','c')],2,weighted.mean,w=win[,use.wt])
 )
 
 #weighted mean
@@ -329,8 +341,6 @@ wtquant=function(l,var,w,q){
   return(r)
 }
 
-
-####plot means ... [[HERE!!]]
 
 mean.plt=list()
 
@@ -375,19 +385,20 @@ mean.plt[[d]]=ggplot(preds[[d]],
        
 }
 
-#pdf(file=paste0(imdir,'mean-fit.pdf'))
+pdf(file=paste0(imdir,'mean-fit.pdf'))
 
-grid.arrange(mean.plt[['a']] + ylim(pltrange),
-             mean.plt[['p']] + ylim(pltrange),
-             mean.plt[['c']] + ylim(pltrange),
-             ncol=3)
+  grid.arrange(mean.plt[['a']] + ylim(pltrange),
+               mean.plt[['p']] + ylim(pltrange),
+               mean.plt[['c']] + ylim(pltrange),
+               ncol=3)
 
-#dev.off()
+dev.off()
 
 
 ##posterior for mean effects
 
 #draw list for posterior sample
+#post.size=10000
 post.size=1000
 ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
 post.mods = sample(win$modnum,size=post.size,
@@ -412,6 +423,9 @@ for(i in seq_along(post.mods)){
   xhat = model.matrix(~.,xhat)
   
   #draw single set of betas and calculate yhat
+  #these betas might be good to use for estimating
+  #the mean and standard error (instead of the weighted avgs 
+  #above)
   b = allmods[[i.win$modnum]]$beta[sample(1:1000,1),]
   s2 = allmods[[i.win$modnum]]$sigma
   ytilde[,i] = xhat %*% b + rnorm(nrow(xhat),mean=0,sd=s2)
@@ -431,8 +445,8 @@ print(summary(as.vector(ytilde)))
 
 #mean
 print('omnibus bayesian p-value of mean')
-#sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
-sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
+sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
+#sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
 #sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
 
 
@@ -484,25 +498,46 @@ predy.period = apply(ytilde.period,1,function(x)
 predy.period = as.data.frame(t(predy.period))
 predy.period$p = c(1:nrow(predy.period)); colnames(predy.period) = c('mean','up','low','p')
 
+predy.cohort = apply(ytilde.cohort,1,function(x)
+  c(mean=mean(x),up=quantile(x,0.975),low=quantile(x,0.025)))
+predy.cohort = as.data.frame(t(predy.cohort))
+predy.cohort$c = c(1:nrow(predy.cohort)); colnames(predy.cohort) = c('mean','up','low','c')
+
+
+ggplot(predy.age,aes(x=a,y=mean)) + 
+  geom_boxplot(data=tdat, aes(x=a,y=y,group=a),alpha=.05) +
+  geom_line() + 
+  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
+
 ggplot(predy.period,aes(x=p,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=p,y=y,group=p),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
   
+ggplot(predy.cohort,aes(x=c,y=mean)) + 
+  geom_boxplot(data=tdat, aes(x=c+20,y=y,group=c),alpha=.05) +
+  geom_line() + 
+  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
 
 #print(act)
 
 #predict = ggplot(ytilde.age, aes())
 
+#should do this dynamicall...
+yl=range(c(actual.age$x,
+             actual.period$x,
+             actual.cohort$x))
 
-
-#pdf(paste0(imdir,'mean-fit-post.pdf')) --conditional??
-par(mfrow=c(1,3))
-plot(actual.age,type='l'); lines(actual.age[[1]],apply(ytilde.age,1,mean),type='p')
-plot(actual.period,type='l'); lines(actual.period[[1]],apply(ytilde.period,1,mean),type='p')
-plot(actual.cohort,type='l'); lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean),type='p')
-#dev.off()
+pdf(paste0(imdir,'mean-fit-post.pdf')) #--conditional??
+  par(mfrow=c(1,3))
+  plot(actual.age,type='l',ylim=yl);
+    lines(actual.age[[1]],apply(ytilde.age,1,mean),type='p')
+  plot(actual.period,type='l',ylim=yl); 
+    lines(actual.period[[1]],apply(ytilde.period,1,mean),type='p')
+  plot(actual.cohort,type='l',ylim=yl); 
+    lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean),type='p')
+dev.off()
 
 ####
 #testing of final model
@@ -519,3 +554,11 @@ print(mean(fin.bayes$ll))
 print(
   sum(dnorm(y,mean=predict(fin.freq),sd=mean(fin.bayes$sigma),log=TRUE))
 )
+
+window.summary =  win %>% select(a,p,c) %>%
+    summarize_each(funs(
+      m.wn=mean(.),
+      rmse.win=weighted.mean(.,w=win$rmsewt),
+      bic.win=weighted.mean(.,w=win$wt),
+      bic_prime.win=weighted.mean(.,w=win$w_prime))
+      ) 

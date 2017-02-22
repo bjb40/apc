@@ -133,5 +133,7 @@ tdat = dats[[sample(seq_along(dats),1)]][,c('a','p','y1','y2','y3','y4')]
 #save 1 sset of testdata
 save(tdat,file=paste0(datdir,'testdat.RData'))
 
-#write.csv(dat[[1]][,c('a','p','y1','y2','y3','y4')],paste0(datdir,'testdat.csv'))
+#write .csv of 1 set for pasting to stata
+write.csv(tdat[,c('a','p','y1','y2','y3','y4')],
+          "H:/projects/apc/output/sim_data/tdat.csv")
 
