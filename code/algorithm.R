@@ -101,48 +101,62 @@ effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
 
-#set of numbers for window widths
-sampframe=c(0,1,3,5,10)
-win = data.frame(a=numeric(), p=numeric(), c=numeric())
-
-for(age_w in sampframe){
+window.sample=function(var){
+  #input is continuous of a,p,c
+  #output is factor with uniform, random window constraints
+  #see dirichelet, e.g. for alternative algorithms
+  vals=unique(var)
   
+  mean.wins=round(runif(1)*length(vals))
+  winprob=1-(mean.wins/length(vals))
+  partition=runif(length(vals)-1)>winprob
+  
+  #assign windows of 1 if all false
+  if(!any(partition)){
+    wins=window(var,winlength=1)
+  } else{
+    breaks=vals[which(partition==TRUE)]
+    breaks=unique(c(min(var)-1,breaks,max(var)))
+    wins=window(var,breaks=breaks)
+  }
+  
+  return(wins)
+}
+
+#set of numbers of random samples
+n.samples=25
+
+#holder df for model summary data 
+win = data.frame(a=numeric(), p=numeric(), c=numeric())
+breaks=list(a=list(),p=list(),c=list())
+
+for(s in 1:n.samples){
+
   #reset dataframe
   x=tdat[,c('a','p','c')]
+  
+  #draw random window samples
+  x$a=window.sample(x$a)
+  x$p=window.sample(x$p)
+  x$c=window.sample(x$c)
+  
+  #collect model data
+  nr=data.frame(a=length(levels(x$a)),
+                p=length(levels(x$p)),
+                c=length(levels(x$c)))
+  win=rbind(win,nr)
+  
+  #collect breaks data
+  breaks$a[[s]]=attr(x$a,'breaks')
+  breaks$p[[s]]=attr(x$p,'breaks')
+  breaks$c[[s]]=attr(x$c,'breaks')
+  
 
-  if(age_w==0){
-    x = x[!colnames(x) == 'a']
-  } else{
-    x$a=window(tdat$a,winlength=age_w)
-  }
-
-  for(period_w in sampframe){
-
-    if(period_w==0){
-      x = x[!colnames(x) == 'p']
-    } else{
-      x$p=window(tdat$p,winlength=period_w)
-    }
-    
-    for(cohort_w in sampframe){
-
-      if(cohort_w==0){
-        x = x[!colnames(x) == 'c']
-      } else{
-        x$c=window(tdat$c,winlength=cohort_w)
-      }
-      #skip unidentified models
-      comb_w = c(age_w,period_w,cohort_w) 
-      if(all(comb_w ==1) | all(comb_w ==0)){next} 
-      
-      nr=data.frame(a=age_w,p=period_w,c=cohort_w)
-      win=rbind(win,nr)
-       
       cat('\n\nEstimating model',length(allmods),
             'with windows:',
-            '\n\tage    ',age_w,
-            '\n\tperiod ',period_w,
-            '\n\tcohort ',cohort_w,
+            '\n\tage    ',nr$a,
+            '\n\tperiod ',nr$p,
+            '\n\tcohort ',nr$c,
             '\n\n')
             
       #add esitmate
@@ -186,11 +200,8 @@ for(age_w in sampframe){
         avtm=(avtm*(length(allmods)-1)+Sys.time()-tm)/length(allmods)
         cat('Average model time:',avtm,'\n\n')
         tm=Sys.time()
-#      }
-    }#end cohort loop
-  
-  }#end period loop   
-} #end age loop
+
+}#end sampling loop
 
 
 ##post-processing --- best model
@@ -402,32 +413,27 @@ dev.off()
 post.size=1000
 ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
 post.mods = sample(win$modnum,size=post.size,
-                   replace=TRUE,prob=win$wt)
+                   replace=TRUE,prob=win$rmsewt)
 
+#arror here
 for(i in seq_along(post.mods)){
   i.win=win[post.mods[i],]
-  keep=NULL
+  modnum=i.win$modnum
   xhat=tdat[,c('a','p','c')]
   #calculate yhat|a single draw from the model
-  if(i.win$a>0){
-    xhat$a=window(tdat$a,i.win$a)
-    keep[length(keep)+1] = 'a'}
-  if(i.win$p>0){
-    xhat$p=window(tdat$p,i.win$p)
-    keep[length(keep)+1] = 'p'}
-  if(i.win$c>0){
-    xhat$c=window(tdat$c,i.win$c)
-    keep[length(keep)+1] = 'c'}
-  
-  xhat = as.data.frame(xhat[,colnames(xhat) %in% keep])
+    xhat$a=window(tdat$a,breaks=breaks$a[[modnum]])
+    xhat$p=window(tdat$p,breaks=breaks$p[[modnum]])
+    xhat$c=window(tdat$c,breaks=breaks$c[[modnum]])
+
+  xhat = as.data.frame(xhat)
   xhat = model.matrix(~.,xhat)
   
   #draw single set of betas and calculate yhat
   #these betas might be good to use for estimating
   #the mean and standard error (instead of the weighted avgs 
   #above)
-  b = allmods[[i.win$modnum]]$beta[sample(1:1000,1),]
-  s2 = allmods[[i.win$modnum]]$sigma
+  b = allmods[[modnum]]$beta[sample(1:1000,1),]
+  s2 = allmods[[modnum]]$sigma
   ytilde[,i] = xhat %*% b + rnorm(nrow(xhat),mean=0,sd=s2)
   
   if(i%%100==0){

@@ -10,29 +10,45 @@ stick_draw = function(num.vals, alpha) {
   weights
 }
 
+#low alpha is low pooling; high alpha is diffuse pooling
+#you could invert it with a low alpha
+len = 20 #length
+
 winnum=matrix(0,1000,1)
-cum.breaks=matrix(0,1000,20)
+cum.breaks=matrix(0,1000,len)
 #first number is windows; 
 #second is alpha: sets break points...
 
 for(i in 1:1000){
-  d=stick_draw(20,5)
-  breaks=unique(c(0,cumsum(round(d*20)),20))
+  d=stick_draw(len,20)
+  breaks=unique(c(0,cumsum(round(d*len)),len))
   cum.breaks[i,1:length(breaks)]=breaks
   #  print(breaks)
-  a=1:20
+  a=1:len
   testwin=window(a,breaks=breaks)
   winnum[i] = length(levels(testwin))
 }
 
 hist(winnum); table(winnum); mean(winnum)
-print('mean')
-apply(cum.breaks,2,mean,na.rm=TRUE)
-print('max')
-apply(cum.breaks[,1:19],2,max,na.rm=TRUE)
-print('min')
-apply(cum.breaks[,1:19],2,min,na.rm=TRUE)
+#print('mean')
+#apply(cum.breaks,2,mean,na.rm=TRUE)
+#print('max')
+#apply(cum.breaks[,1:len-1],2,max,na.rm=TRUE)
+#print('min')
+#apply(cum.breaks[,1:len-1],2,min,na.rm=TRUE)
 
+library(MCMCpack)
+
+#alpha=rep(1,20)
+#symmetric is where alpha is a single scalar
+alpha=c(.1,.1,1,1,
+        2,2,2,2,
+        3,3,3,3,
+        10,10,10,10)
+
+d=rdirichlet(1000,alpha)
+hist(apply(d,1,function(x) sum(x>(1/20)))) #can use the same function as below
+print(colSums(d)/nrow(d))
 
 #unique algorithm...
 #need proof???
@@ -40,6 +56,7 @@ apply(cum.breaks[,1:19],2,min,na.rm=TRUE)
 
 ####uniform equality partition ....
 #50% probability it is equal to next value
+#only about 200 combos
 winnum=matrix(0,1000,1)
 cum.breaks=matrix(as.numeric(NA),1000,20)
 
@@ -51,7 +68,7 @@ for(i in 1:1000){
   if(!any(partition)){next} #skip cases with no breaks (could add as continuous...)
   breaks=which(partition==TRUE)
   cum.breaks[i,1:length(breaks)]=breaks
-  testwin=window(a,breaks=c(0,breaks,max(a)))
+  testwin=window(a,breaks=unique(c(0,breaks,max(a))))
   print(breaks)
   winnum[i] = length(levels(testwin))
   
@@ -60,6 +77,7 @@ for(i in 1:1000){
 hist(winnum); table(winnum); mean(winnum)
 cat('mean window length', 20/mean(winnum))
 
+sum(!duplicated(cum.breaks),margin=1)
 
 print('mean')
 apply(cum.breaks,2,mean,na.rm=TRUE)
@@ -85,7 +103,7 @@ cum.breaks=matrix(as.numeric(NA),1000,20)
 
 
 p=rep(.5,20) # can draw from a proposal support between 0 and 1
-#can also use this to sample breaks
+#can also use this to sample breaks --  looks really close do dirichelet
 
 for(i in 1:1000){
   equ.draws = runif(20)
@@ -112,12 +130,14 @@ print('min')
 apply(cum.breaks[,1:19],2,min,na.rm=TRUE)
 
 
+
 ####
 #equality constraints sampler; i.e. sampling "breaks" directly
+#doesn't work
 winnum=matrix(0,1000,1)
 cum.breaks=matrix(as.numeric(NA),1000,20)
 
-n.constraints=3
+n.constraints=10
 for(i in 1:1000){
   #set uniform partition
   partition = rep(TRUE,length(a)-1)
