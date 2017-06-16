@@ -1,98 +1,20 @@
 ###
 
-
 #clear cache
 rm(list=ls())
 source('config~.R')
-
 
 #prelim
 dv='y1'
 actual='s1'
 
-
 #load test data
-load(paste0(datdir,'testdat.RData'))
-#load(paste0(datdir,'nsim.RData'))
-
-###
-#p. 563 Gelman
-###
-
-###
-#basic linear model gibbs sampler (Scott)
-###
-
-lin_gibbs = function(y,x){
-  iter = 1000
-  
-  rmse=ll=r2=s2=matrix(1,iter)
-  b= matrix(0,iter,ncol(x))
-  yhat=matrix(0,length(y))
-  xtxi = solve(t(x)%*%x)
-  m=lm(y~x-1)
-  pars=coefficients(m)
-  res=residuals(m)
-  n=length(y)
-  
-  #simulate sigma from inverse gamma marginal -- inefficient!
-  #s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(residuals(lm(y~x-1)))%*%residuals(lm(y~x-1)))
-  s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(res)%*%res)
-  
-  #set ppd
-  ppd = matrix(0,iter,length(y))
-  
-  #simulate beta from mvn
-  #if you can vetorize this you will speed up!!
-  for (i in 1:iter){
-    b[i,]=pars+t(rnorm(length(pars),mean=0,sd=1))%*%chol(s2[i]*xtxi)
-    yhat = x %*% b[i,]
-    sse = sum((y-(yhat))^2)
-    sst = sum((y-mean(y))^2)
-    r2[i] = 1-(sse/sst)
-    rmse[i] = sqrt(sse/n)
-    ll[i]=sum(dnorm(y,mean=yhat,sd=s2[i],log=TRUE))
-    
-    #ppd[i,] = yhat + rnorm(length(y),mean=0,sd=s2[i])
-    
-  }
-  
-  colnames(b) = colnames(x)
-  ###BIC estimate for Bayes Factor (posterior probability weight)
-  #p. 135 explains the differnce between bic and bic_prime
-  #bic is "overall model fit" where 
-  #bic prime "provides an assessment of whether the model is explaining enough
-  #variation to justify the number of parameters it's using..."
-  ###p. 135, Eq. 26 from Rafferty 1995 (SMR)
-
-  bic_prime=n*log(1-mean(r2))+(ncol(x)-1)*log(n)
-  #bic equation ...eq 23 http://www.stat.washington.edu/raftery/Research/PDF/kass1995.pdf
-  bic=-2*mean(ll)+log(n)*ncol(x)
-  #bic equation from... [wikepedia]
-  #bic=-2*mean(ll)+ncol(x)*(log(n-log(2*pi))) -- large n .. ?
-  #bic=log(n)*ncol(x)-2*mean(ll)
-  
-  #sigma is poorly named
-  return(list(betas=b,sigma=s2,r2=r2,rmse=rmse,bic=bic,bic_prime=bic_prime,ll=ll))
-
-}#end linear gibbs
-
+#load(paste0(datdir,'testdat.RData'))
+load(paste0(datdir,'nsim.RData'))
 
 #@@@@@@@@@@@
 #sampling from model subspace
 #@@@@@@@@@@@
-
-####
-#nested for-loops; windows of 1-5 spaces each (including non-inclusion... (i.e. 0))
-####
-
-#calculate time; based on 1 second per calculation
-#models=6^3
-#cat('Estimated hours:',models/60/60)
-
-#y1 - y4 for scenarios
-#s1 - s4 are "actual" for scenarios
-#y=tdat$y1
 
 y=tdat[,dv]
 tdat$c=tdat$p-tdat$a
@@ -226,12 +148,11 @@ print(mean(allmods[[best]]$r2))
 library(ggplot2)
 library(gridExtra)
 
-#load(paste0(datdir,'luo_sim_fits.RData'))
+load(paste0(datdir,'luo_sim_fits.RData'))
 
 best.plt = list()
 preds = list()
 
-#need to make dynamic!!
 
 #for(d in c('a','p','c')){
 for(d in c('a','p','c')){
@@ -249,8 +170,12 @@ for(d in c('a','p','c')){
   preds[[d]]$down = rng[1,]
   #s1-s4 are for scenarios --- needs to match with y1-y4
   #preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
-  preds[[d]]$actual=pltdat[[d]][order(pltdat[[d]]$id),actual]
-  preds[[d]]$id=pltdat[[d]]$id[order(pltdat[[d]]$id)]
+  pltdat = tdat %>%
+    group_by_(d) %>% 
+    summarize(s1=mean(s1)) %>%
+    rename_(id=d)
+  preds[[d]]$actual=pltdat[,'s1']
+  preds[[d]]$id=pltdat$id
   
   
   #need to change axes and limits...actually better to melt into df 

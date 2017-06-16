@@ -31,17 +31,23 @@ n=nrow(dat)
 #)
 
 t.beta=data.frame(
-  a=0.5,a2=-0.1,p=0.04,p2=0.02,c=0,c2=0
+  a=0.5,a2=0,p=0.04,p2=0,c=0,c2=-0
 )
 
-#set r2
-r2=0.2
+#set r2--need to fix
+r2=0.002
 
 evar=(1-r2)/r2
 e=rnorm(n,0,sqrt(evar))
 
 #simulate and save data
-dat$y1 = as.matrix(dat)%*%t(t.beta) + e
+dat$s1 = as.matrix(dat)%*%t(t.beta)
+dat$y1 = dat$s1 + e
+#tdat = dat
 tdat = dat %>% select(-c,-a2,-p2,-c2)
+
+print(
+  summary(lm(y1~a+p,data=tdat))
+)
 
 save(tdat,file=paste0(datdir,'nsim.RData'))
