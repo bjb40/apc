@@ -13,6 +13,7 @@ actual='s1'
 
 #load test data
 load(paste0(datdir,'testdat.RData'))
+#load(paste0(datdir,'nsim.RData'))
 
 ###
 #p. 563 Gelman
@@ -225,7 +226,7 @@ print(mean(allmods[[best]]$r2))
 library(ggplot2)
 library(gridExtra)
 
-load(paste0(datdir,'luo_sim_fits.RData'))
+#load(paste0(datdir,'luo_sim_fits.RData'))
 
 best.plt = list()
 preds = list()
@@ -562,7 +563,7 @@ print(
 )
 
 window.summary =  win %>% select(a,p,c) %>%
-    summarize_each(funs(
+    summarize_all(funs(
       m.wn=mean(.),
       rmse.win=weighted.mean(.,w=win$rmsewt),
       bic.win=weighted.mean(.,w=win$wt),

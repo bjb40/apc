@@ -2,8 +2,8 @@
 ##7 is single windows for p and c with no a y2
 
 testmodel=best
-actual='s2'
-dv='y2'
+actual='s1'
+dv='y1'
 totest = c('a','p','c')
 
 #one off for now based on looking...
