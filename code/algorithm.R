@@ -47,7 +47,7 @@ window.sample=function(var){
 }
 
 #set of numbers of random samples
-n.samples=25
+n.samples=100
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -82,7 +82,7 @@ for(s in 1:n.samples){
             '\n\tcohort ',nr$c,
             '\n\n')
             
-      #add esitmate
+      #add esitmate / lin_gibbs is bayesian gibbs sampler
       mnum = length(allmods)+1
       m = allmods[[mnum]] = lin_gibbs(y=y,x=model.matrix(~.,x))
       
@@ -148,7 +148,8 @@ print(mean(allmods[[best]]$r2))
 library(ggplot2)
 library(gridExtra)
 
-load(paste0(datdir,'luo_sim_fits.RData'))
+#load(paste0(datdir,'luo_sim_fits.RData'))
+load(paste0(datdir,'nsim_fits.RData'))
 
 best.plt = list()
 preds = list()
@@ -156,7 +157,7 @@ preds = list()
 
 #for(d in c('a','p','c')){
 for(d in c('a','p','c')){
-  if(effects[[best]][[d]]==0){
+  if(length(effects[[best]][[d]])==0){
     effects[[best]][[d]]=matrix(0,1000,20)
     if(d == 'c'){
       effects[[best]][[d]]=cbind(effects[[best]][[d]],matrix(0,1000,19))
@@ -169,22 +170,16 @@ for(d in c('a','p','c')){
   preds[[d]]$up = rng[2,]
   preds[[d]]$down = rng[1,]
   #s1-s4 are for scenarios --- needs to match with y1-y4
-  #preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
-  pltdat = tdat %>%
-    group_by_(d) %>% 
-    summarize(s1=mean(s1)) %>%
-    rename_(id=d)
-  preds[[d]]$actual=pltdat[,'s1']
-  preds[[d]]$id=pltdat$id
+  preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
   
+  preds[[d]]$id=order(unique(tdat[,d]))
   
   #need to change axes and limits...actually better to melt into df 
   #and not to use grid.arrange... (same for below)
-  calcplt=ggplot(preds[[d]],
-    aes_string(y='est',x='id') ) + 
+  calcplt=ggplot(preds[[d]],aes(x=id,y=est))+ 
     geom_point() + 
-    geom_errorbar(aes(ymax=up,ymin=down)) +
-    geom_line(aes(y=actual))
+    geom_errorbar(aes(ymax=up,ymin=down)) + 
+    geom_line(aes(y=actual)) + theme_classic()
 
   #print(calcplt)
   #Sys.sleep(2)
@@ -316,8 +311,8 @@ pltrange=range(unlist(
 mean.plt[[d]]=ggplot(preds[[d]],
          aes_string(y='m_est',x='id')) + 
          geom_point() + 
-         geom_errorbar(aes(ymax=m_up,ymin=m_down)) +
-         geom_line(aes(y=actual))
+         geom_errorbar(aes(ymax=m_up,ymin=m_down))  +
+         geom_line(aes(y=actual)) + theme_minimal()
 
        
 }
@@ -341,7 +336,7 @@ ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
 post.mods = sample(win$modnum,size=post.size,
                    replace=TRUE,prob=win$rmsewt)
 
-#arror here
+#error here
 for(i in seq_along(post.mods)){
   i.win=win[post.mods[i],]
   modnum=i.win$modnum
@@ -441,10 +436,14 @@ ggplot(predy.age,aes(x=a,y=mean)) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
+Sys.sleep(5)
+
 ggplot(predy.period,aes(x=p,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=p,y=y,group=p),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
+
+Sys.sleep(5)
   
 ggplot(predy.cohort,aes(x=c,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=c+20,y=y,group=c),alpha=.05) +
@@ -457,9 +456,9 @@ ggplot(predy.cohort,aes(x=c,y=mean)) +
 #predict = ggplot(ytilde.age, aes())
 
 #should do this dynamicall...
-yl=range(c(actual.age$x,
-             actual.period$x,
-             actual.cohort$x))
+yl=range(c(actual.age$V1,
+             actual.period$V1,
+             actual.cohort$V1))
 
 pdf(paste0(imdir,'mean-fit-post.pdf')) #--conditional??
   par(mfrow=c(1,3))
