@@ -47,7 +47,7 @@ window.sample=function(var){
 }
 
 #set of numbers of random samples
-n.samples=100
+n.samples=50
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -84,7 +84,16 @@ for(s in 1:n.samples){
             
       #add esitmate / lin_gibbs is bayesian gibbs sampler
       mnum = length(allmods)+1
-      m = allmods[[mnum]] = lin_gibbs(y=y,x=model.matrix(~.,x))
+      
+      #reassign random references to each vector
+      a.lev=length(levels(x$a)); a.b = sample(1:a.lev,1)
+      p.lev=length(levels(x$p)); p.b = sample(1:p.lev,1)
+      c.lev=length(levels(x$c)); c.b = sample(1:c.lev,1)
+      
+      xmat = model.matrix(~C(a,contr.treatment(a.lev,base=a.b))+
+                            C(p,contr.treatment(p.lev,base=p.b))+
+                            C(c,contr.treatment(c.lev,base=c.b)),data=x)
+      m = allmods[[mnum]] = lin_gibbs(y=y,x=xmat)
       
       #consider limiting base on occam's window...
       #how can I incorporate grandmeans into calculation of beta-hat?
@@ -172,7 +181,8 @@ for(d in c('a','p','c')){
   #s1-s4 are for scenarios --- needs to match with y1-y4
   preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
   
-  preds[[d]]$id=order(unique(tdat[,d]))
+  preds[[d]]$id=unique(tdat[,d])[order(pltdat[[d]]$id)]
+  #preds[[d]]=preds[[d]] %>% arrange(id)
   
   #need to change axes and limits...actually better to melt into df 
   #and not to use grid.arrange... (same for below)
@@ -431,27 +441,34 @@ predy.cohort = as.data.frame(t(predy.cohort))
 predy.cohort$c = c(1:nrow(predy.cohort)); colnames(predy.cohort) = c('mean','up','low','c')
 
 
-ggplot(predy.age,aes(x=a,y=mean)) + 
+preda = ggplot(predy.age,aes(x=a,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=a,y=y,group=a),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
-Sys.sleep(5)
+#Sys.sleep(5)
 
-ggplot(predy.period,aes(x=p,y=mean)) + 
+predp = ggplot(predy.period,aes(x=p,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=p,y=y,group=p),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
-Sys.sleep(5)
+#Sys.sleep(5)
   
-ggplot(predy.cohort,aes(x=c,y=mean)) + 
+predc = ggplot(predy.cohort,aes(x=c,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=c+20,y=y,group=c),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
+pdf(file=paste0(imdir,'comp-post.pdf'))
 
-#print(act)
+grid.arrange(preda + theme_minimal(),
+             predp + theme_minimal(),
+             predc + theme_minimal(),
+             nrow=3)
+
+dev.off()
+
 
 #predict = ggplot(ytilde.age, aes())
 

@@ -1,13 +1,13 @@
 [1] "Summary of acutal to posterior"
-       V1         
- Min.   :-9.3386  
- 1st Qu.: 0.3488  
- Median : 3.6211  
- Mean   : 4.0769  
- 3rd Qu.: 7.7247  
- Max.   :17.3706  
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
--11.066   0.415   3.655   4.077   7.723  20.087 
+       V1        
+ Min.   :-13.31  
+ 1st Qu.: 73.14  
+ Median :146.45  
+ Mean   :183.22  
+ 3rd Qu.:284.24  
+ Max.   :512.88  
+     Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+-14276.62     55.73    160.33    182.08    311.79  12906.20 
 [1] "omnibus bayesian p-value of mean"
 [1] "period pvalues"
 [1] "cohort pvalues"
