@@ -12,12 +12,22 @@ actual='s1'
 #load(paste0(datdir,'testdat.RData'))
 load(paste0(datdir,'nsim.RData'))
 
+
 #@@@@@@@@@@@
 #sampling from model subspace
 #@@@@@@@@@@@
 
 y=tdat[,dv]
 tdat$c=tdat$p-tdat$a
+maxc= max(tdat$c)
+minc = min(tdat$c)
+#perturb
+tdat$c = tdat$c + round(runif(nrow(tdat),-1,1))
+tdat$c = ifelse(tdat$c>maxc,maxc,tdat$c)
+tdat$c = ifelse(tdat$c<minc,minc,tdat$c)
+print('Check whether perturbation solves exact multicolinearity')
+print(summary(lm(y1~a+p+c,data=tdat)))
+Sys.sleep(5)
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
 effects=xhats=ppd=list()
@@ -47,7 +57,7 @@ window.sample=function(var){
 }
 
 #set of numbers of random samples
-n.samples=1000
+n.samples=150
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
