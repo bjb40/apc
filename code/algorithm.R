@@ -47,7 +47,7 @@ window.sample=function(var){
 }
 
 #set of numbers of random samples
-n.samples=50
+n.samples=1000
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -59,9 +59,14 @@ for(s in 1:n.samples){
   x=tdat[,c('a','p','c')]
   
   #draw random window samples
-  x$a=window.sample(x$a)
-  x$p=window.sample(x$p)
-  x$c=window.sample(x$c)
+  x$a=window.sample(x$a); la = length(levels(x$a)) == length(unique(tdat$a))
+  x$p=window.sample(x$p); lp = length(levels(x$p)) == length(unique(tdat$p))
+  x$c=window.sample(x$c); lc = length(levels(x$c)) == length(unique(tdat$c))
+  
+  #skip if unideintified
+  if(all(la,lp,lc)){
+    next
+  }
   
   #collect model data
   nr=data.frame(a=length(levels(x$a)),
@@ -510,3 +515,6 @@ window.summary =  win %>% select(a,p,c) %>%
       bic.win=weighted.mean(.,w=win$wt),
       bic_prime.win=weighted.mean(.,w=win$w_prime))
       ) 
+
+load(paste0(datdir,'sim2_tbeta.RData'))
+print(t.beta)

@@ -26,16 +26,18 @@ cat('400 Unique Observations Test:',
 n=nrow(dat)
 
 #set betas (luo)
-#t.beta=data.frame(
-#  a=0.3,a2=-0.01,p=-0.04,p2=0.02,c=0.35,c2=-0.0015
-#)
+t.beta=data.frame(
+  a=0.3,a2=-0.01,p=-0.04,p2=0.02,c=0.35,c2=-0.0015
+)
 
 #t.beta=data.frame(
 #  a=0.5,a2=0,p=0.04,p2=0,c=0,c2=-0
 #)
 
-t.beta=data.frame(t(runif(6,-1,1)))
-colnames(t.beta)=c('a','a2','p','p2','c','c2')
+#t.beta=data.frame(t(runif(6,-1,1)))
+#colnames(t.beta)=c('a','a2','p','p2','c','c2')
+#rescale quadratic effects to be smaller
+#t.beta[,c('a2','p2','c2')] = t.beta[,c('a2','p2','c2')]/10
 
 save(t.beta,file=paste0(datdir,'sim2_tbeta.RData'))
 
