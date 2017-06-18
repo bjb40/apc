@@ -21,13 +21,16 @@ y=tdat[,dv]
 tdat$c=tdat$p-tdat$a
 maxc= max(tdat$c)
 minc = min(tdat$c)
+
 #perturb
+"
 tdat$c = tdat$c + round(runif(nrow(tdat),-1,1))
 tdat$c = ifelse(tdat$c>maxc,maxc,tdat$c)
 tdat$c = ifelse(tdat$c<minc,minc,tdat$c)
 print('Check whether perturbation solves exact multicolinearity')
 print(summary(lm(y1~a+p+c,data=tdat)))
 Sys.sleep(5)
+"
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
 effects=xhats=ppd=list()
@@ -57,7 +60,7 @@ window.sample=function(var){
 }
 
 #set of numbers of random samples
-n.samples=150
+n.samples=1
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -105,9 +108,11 @@ for(s in 1:n.samples){
       p.lev=length(levels(x$p)); p.b = sample(1:p.lev,1)
       c.lev=length(levels(x$c)); c.b = sample(1:c.lev,1)
       
-      xmat = model.matrix(~C(a,contr.treatment(a.lev,base=a.b))+
-                            C(p,contr.treatment(p.lev,base=p.b))+
-                            C(c,contr.treatment(c.lev,base=c.b)),data=x)
+      form.c = as.formula(paste("~C(a,contr.treatment(a.lev,base=a.b))+
+        C(p,contr.treatment(p.lev,base=p.b))+
+        C(c,contr.treatment(c.lev,base=c.b))"))
+      
+      xmat = model.matrix(form.c,data=x)
       m = allmods[[mnum]] = lin_gibbs(y=y,x=xmat)
       
       #consider limiting base on occam's window...
@@ -117,7 +122,7 @@ for(s in 1:n.samples){
       
       blockdat=lapply(x,scopedummy)
       predat=lapply(blockdat,FUN=function(x) 
-        model.matrix(~.,data=as.data.frame(x)))
+        model.matrix(form.c,data=as.data.frame(x)))
 
       effects[[mnum]] = xhats[[mnum]] = list()
       

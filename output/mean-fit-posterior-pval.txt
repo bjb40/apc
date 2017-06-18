@@ -7,7 +7,7 @@
  3rd Qu.: -5.828  
  Max.   : 24.761  
      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
--250.1600  -35.3994  -17.1779  -17.8307    0.2382  200.6732 
+-134.0344  -31.6585  -15.4740  -16.7507   -0.7291   82.2653 
 [1] "omnibus bayesian p-value of mean"
 [1] "period pvalues"
 [1] "cohort pvalues"
