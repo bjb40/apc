@@ -60,7 +60,7 @@ window.sample=function(var){
 }
 
 #set of numbers of random samples
-n.samples=1
+n.samples=150
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -118,25 +118,32 @@ for(s in 1:n.samples){
       #consider limiting base on occam's window...
       #how can I incorporate grandmeans into calculation of beta-hat?
       #also, some don't have this .... 
-      grand.means=t(as.matrix(colSums(model.matrix(~.,x))/nrow(x)))
+      grand.means=t(as.matrix(colSums(model.matrix(form.c,x))/nrow(x)))
       
       blockdat=lapply(x,scopedummy)
+      blockdat$a = relevel(blockdat$a,ref=a.b)
+      blockdat$p = relevel(blockdat$p,ref=p.b)
+      blockdat$c = relevel(blockdat$c,ref=c.b)
+      
       predat=lapply(blockdat,FUN=function(x) 
-        model.matrix(form.c,data=as.data.frame(x)))
+        model.matrix(~.,data=as.data.frame(x)))
 
       effects[[mnum]] = xhats[[mnum]] = list()
-      
+      #xhat = list()
+
       betas=list()
       for(eff in names(predat)){
         #fix colnames
         colnames(predat[[eff]]) = sub('x',eff,colnames(predat[[eff]]))
-        #input means for xhat
-        
+        #calculate means for xhat, & id effects at issue 
         xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
-        #replace specific with predat
-        xhat[,colnames(predat[[eff]])] = predat[[eff]]
+        
+        #replace means of effect dimensions with indicator in matrix
+        calceff = grepl(paste0(eff,'.lev|Intercept'),colnames(xhat))
+        xhat[,calceff] = predat[[eff]]
         xhats[[mnum]][[eff]] = xhat
-
+  
+        
         effects[[mnum]][[eff]] = t(xhat %*% t(m$betas))
         colnames(effects[[mnum]][[eff]]) = paste0(eff,unique(tdat[,eff]))
       }
@@ -373,9 +380,12 @@ for(i in seq_along(post.mods)){
   xhat=tdat[,c('a','p','c')]
   #calculate yhat|a single draw from the model
     xhat$a=window(tdat$a,breaks=breaks$a[[modnum]])
+      #xhat$a = relevel(xhat$a,ref=a.b)
     xhat$p=window(tdat$p,breaks=breaks$p[[modnum]])
+      #xhat$p = relevel(xhat$b,ref=p.b)
     xhat$c=window(tdat$c,breaks=breaks$c[[modnum]])
-
+      #xhat$c = relevel(xhat$c,ref=c.b)
+      
   xhat = as.data.frame(xhat)
   xhat = model.matrix(~.,xhat)
   
@@ -402,7 +412,7 @@ print(summary(as.vector(ytilde)))
 
 #mean
 print('omnibus bayesian p-value of mean')
-sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
+print(sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde))
 #sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
 #sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
 
