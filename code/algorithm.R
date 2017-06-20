@@ -115,11 +115,25 @@ for(s in 1:n.samples){
       xmat = model.matrix(form.c,data=x)
       m = allmods[[mnum]] = lin_gibbs(y=y,x=xmat)
       
+      #predictions with margins, here!!
+      xhat = model.matrix(form.c,unique(x))
+      yh = cbind(unique(x),xhat %*% t(m$betas)) # not expanded is prob, here
+
       #consider limiting base on occam's window...
       #how can I incorporate grandmeans into calculation of beta-hat?
       #also, some don't have this .... 
       grand.means=t(as.matrix(colSums(model.matrix(form.c,x))/nrow(x)))
       
+      #one way
+      #a.mn=x %>%
+      #  group_by(a) %>% 
+      #  count(p) %>%
+      #  mutate(p=n/nrow(x))
+      
+      #another way---can just cbind to scopedummy...
+      mns = table(x); print(dimnames(mns))
+      #mns.a = apply(mns,1,function(x) margin.table(x,margin=1))/nrow(x)
+
       blockdat=lapply(x,scopedummy)
       blockdat$a = relevel(blockdat$a,ref=a.b)
       blockdat$p = relevel(blockdat$p,ref=p.b)
@@ -136,7 +150,16 @@ for(s in 1:n.samples){
         #fix colnames
         colnames(predat[[eff]]) = sub('x',eff,colnames(predat[[eff]]))
         #calculate means for xhat, & id effects at issue 
-        xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
+        #xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
+        
+        #calculate margins
+        odims = names(predat)[!names(predat) %in% eff]
+        margin1 = which(names(dimnames(mns))==eff)
+        margin2 = which(names(dimnames(mns))==odims[1])
+        margin3 = which(names(dimnames(mns))==odims[2])
+      
+        mns.2 = t(apply(mns,margin1,function(x) margin.table(x,margin=margin2))/nrow(x))
+        
         
         #replace means of effect dimensions with indicator in matrix
         calceff = grepl(paste0(eff,'.lev|Intercept'),colnames(xhat))
