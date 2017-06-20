@@ -115,14 +115,29 @@ for(s in 1:n.samples){
       xmat = model.matrix(form.c,data=x)
       m = allmods[[mnum]] = lin_gibbs(y=y,x=xmat)
       
-      #predictions with margins, here!!
-      xhat = model.matrix(form.c,unique(x))
-      yh = cbind(unique(x),xhat %*% t(m$betas)) # not expanded is prob, here
+      #@@@@@@@@@@@@@@@@@@@@@@@@@@@
+      #predictions with margins, here!! --- need to fix 's1', too? Or is s1 plotted as
+      #one particular dummy, i.e. the "mean" dummy
+      yh = cbind(tdat[,c('a','p','c')],xmat %*% t(m$betas)) # not expanded is prob, here
+      yh.m = cbind(tdat[,c('a','p','c')],
+                   rowMeans(xmat %*% t(m$betas)))
+      yh.c=yh.m %>% group_by(c) %>% 
+        summarize_at(vars(-a,-p),funs(mean(.)))
+      plt = pltdat[['c']] %>% arrange(id) %>% rename(c=id)
+      plot(yh.c); lines(plt)
+      
+      
 
       #consider limiting base on occam's window...
       #how can I incorporate grandmeans into calculation of beta-hat?
       #also, some don't have this .... 
       grand.means=t(as.matrix(colSums(model.matrix(form.c,x))/nrow(x)))
+      
+      #this seems to match the 's1' margin property
+      m.c = window(mean(tdat$c),breaks=attr(x$c,'breaks'));
+      m.c=relevel(m.c,ref=c.b)
+      m.c=model.matrix(~.,as.data.frame(m.c)) #just rep and cbind that!!
+      
       
       #one way
       #a.mn=x %>%
