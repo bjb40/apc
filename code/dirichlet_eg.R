@@ -46,7 +46,8 @@ alpha=c(.1,.1,1,1,
         3,3,3,3,
         10,10,10,10)
 
-d=rdirichlet(1000,alpha)
+
+d=rdirichlet(1000,rev(alpha))
 hist(apply(d,1,function(x) sum(x>(1/20)))) #can use the same function as below
 print(colSums(d)/nrow(d))
 
@@ -63,16 +64,19 @@ cum.breaks=matrix(as.numeric(NA),1000,20)
 for(i in 1:1000){
   mean.wins=round(runif(1)*20); #print(mean.wins)
   a=1:20
-  winprob=1-(mean.wins/max(a))
+  winprob=1-(mean.wins/max(a)); #print(winprob)
   partition=runif(19)>winprob
   if(!any(partition)){next} #skip cases with no breaks (could add as continuous...)
   breaks=which(partition==TRUE)
+  breaks = unique(c(0,breaks,max(a)))
   cum.breaks[i,1:length(breaks)]=breaks
-  testwin=window(a,breaks=unique(c(0,breaks,max(a))))
-  print(breaks)
+  testwin=window(a,breaks=breaks)
+  #print(breaks)
   winnum[i] = length(levels(testwin))
-  
 }
+
+c.break = apply(cum.breaks,1,function(x) 1:20 %in% x)
+print(rowSums(c.break)/1000)
 
 hist(winnum); table(winnum); mean(winnum)
 cat('mean window length', 20/mean(winnum))
@@ -154,7 +158,8 @@ for(i in 1:1000){
   
 }
 
-hist(winnum); table(winnum); mean(winnum)
+#hist(winnum); 
+table(winnum); mean(winnum)
 cat('mean window length', 20/mean(winnum))
 
 

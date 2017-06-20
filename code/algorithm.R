@@ -60,7 +60,7 @@ window.sample=function(var){
 }
 
 #set of numbers of random samples
-n.samples=150
+n.samples=5
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -269,8 +269,8 @@ win$modnum=1:nrow(win)
 #select weight
 use.wt='rmsewt'
 
-for(m in seq_along(effects)){
-  effects[[m]]$w=win[,use.wt][m]
+for(mod in seq_along(effects)){
+  effects[[mod]]$w=win[,use.wt][mod]
 }
 
 #print weighted mean of windows...
@@ -342,7 +342,7 @@ preds[[d]]$m_up=rowSums(
 #pp=melt(predsm,id='cohort')
 
 pltrange=range(unlist(
-  lapply(preds,function(x) range(x %>% select(-id)))
+  lapply(preds,function(x) range(x %>% dplyr::select(-id)))
 ))
 
 mean.plt[[d]]=ggplot(preds[[d]],
@@ -503,9 +503,9 @@ dev.off()
 #predict = ggplot(ytilde.age, aes())
 
 #should do this dynamicall...
-yl=range(c(actual.age$V1,
-             actual.period$V1,
-             actual.cohort$V1))
+yl=range(c(actual.age$x,
+             actual.period$x,
+             actual.cohort$x))
 
 pdf(paste0(imdir,'mean-fit-post.pdf')) #--conditional??
   par(mfrow=c(1,3))
@@ -533,7 +533,7 @@ print(
   sum(dnorm(y,mean=predict(fin.freq),sd=mean(fin.bayes$sigma),log=TRUE))
 )
 
-window.summary =  win %>% select(a,p,c) %>%
+window.summary =  win %>% dplyr::select(a,p,c) %>%
     summarize_all(funs(
       m.wn=mean(.),
       rmse.win=weighted.mean(.,w=win$rmsewt),

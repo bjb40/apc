@@ -52,10 +52,10 @@ evar=(1-r2)/r2
 e=rnorm(n,0,sqrt(evar))
 
 #simulate and save data
-dat$s1 = as.matrix(dat)%*%t(t.beta)[,1]
+dat$s1 = as.vector(as.matrix(dat)%*%t(t.beta))
 dat$y1 = dat$s1 + e
 #tdat = dat
-tdat = dat %>% select(-c,-a2,-p2,-c2)
+tdat = dat %>% dplyr::select(-c,-a2,-p2,-c2)
 
 print(
   summary(lm(y1~a+p,data=tdat))
@@ -94,5 +94,5 @@ for(d in dims){
 save(pltdat,file=paste0(datdir,'nsim_fits.RData'))
 
 #run algorithm
-source('algorithm.R')
+source('algorithm.R',echo=TRUE)
 
