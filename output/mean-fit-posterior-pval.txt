@@ -1,76 +1,10 @@
-
-> #omnibus bayesian pvalues
-> print('Summary of acutal to posterior')
 [1] "Summary of acutal to posterior"
-
-> print(summary(tdat[,dv]))
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
- -12.34   18.84   31.12   30.50   42.35   72.37 
-
-> print(summary(as.vector(ytilde)))
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
--135.19   14.69   31.27   31.51   47.92  220.10 
-
-> #mean
-> print('omnibus bayesian p-value of mean')
+-42.309  -9.113  -3.510  -4.205   1.536  28.791 
+    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+-138.886  -17.912   -5.005   -5.349    7.597  110.529 
 [1] "omnibus bayesian p-value of mean"
-
-> print(sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde))
-[1] 0.344
-
-> #sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
-> #sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
-> 
-> 
-> #bayesian p-values by period 
->  .... [TRUNCATED] 
-
-> print('period pvalues')
+[1] 0.824
 [1] "period pvalues"
-
-> actual.period = aggregate(tdat[,dv],by=list(tdat$p),mean)
-
-> ytilde.period =  sapply(1:ncol(ytilde),function(i)
-+   aggregate(ytilde[,i],by=list(tdat$p),mean)[[2]]
-+ )
-
-> sapply(seq_along(actual.period[[1]]),function(i)
-+   sum(ytilde.period[i,]>actual.period[i,2])/ncol(ytilde)
-+ )
- [1] 0.851 0.820 0.842 0.807 0.694 0.717 0.661 0.517 0.572 0.420 0.419 0.467 0.360
-[14] 0.400 0.359 0.392 0.394 0.334 0.378 0.228
-
-> #bayesian p-values by cohort 
-> print('cohort pvalues')
 [1] "cohort pvalues"
-
-> actual.cohort = aggregate(tdat[,dv],by=list(tdat$c),mean)
-
-> ytilde.cohort =  sapply(1:ncol(ytilde),function(i)
-+   aggregate(ytilde[,i],by=list(tdat$c),mean)[[2]]
-+ )
-
-> sapply(seq_along(actual.cohort[[1]]),function(i)
-+   sum(ytilde.cohort[i,]>actual.cohort[i,2])/ncol(ytilde)
-+ )
- [1] 0.337 0.470 0.755 0.774 0.758 0.820 0.845 0.850 0.773 0.774 0.775 0.716 0.688
-[14] 0.639 0.546 0.537 0.565 0.501 0.513 0.618 0.357 0.382 0.363 0.306 0.329 0.378
-[27] 0.311 0.298 0.384 0.423 0.428 0.420 0.509 0.505 0.540 0.564 0.650 0.640 0.712
-
-> #bayesian p-values by age 
-> print('age pvalues')
 [1] "age pvalues"
-
-> actual.age = aggregate(tdat[,dv],by=list(tdat$a),mean)
-
-> ytilde.age =  sapply(1:ncol(ytilde),function(i)
-+   aggregate(ytilde[,i],by=list(tdat$a),mean)[[2]]
-+ )
-
-> sapply(seq_along(actual.age[[1]]),function(i)
-+   sum(ytilde.age[i,]>actual.age[i,2])/ncol(ytilde)
-+ )
- [1] 0.899 0.468 0.390 0.310 0.382 0.382 0.283 0.463 0.396 0.481 0.538 0.545 0.564
-[14] 0.619 0.658 0.646 0.694 0.705 0.692 0.526
-
-> sink()

@@ -60,7 +60,7 @@ window.sample=function(var){
 }
 
 #set of numbers of random samples
-n.samples=150
+n.samples=50
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
