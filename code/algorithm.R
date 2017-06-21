@@ -64,7 +64,7 @@ window.sample=function(var,alph,nwins){
 }
 
 #set of numbers of random samples
-n.samples=500
+n.samples=250
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -89,17 +89,17 @@ for(s in 2:n.samples){
   
   #draw from proposal distributions
   all.nwins = lapply(all.nwins,function(x)
-                     append(x,x[s-1] + round(runif(1,-1,1)*2))
+                     append(x,x[s-1] + rnorm(1,mean=0,sd=1))
   )
   
   all.alphas= lapply(all.alphas, function(x)
-                    rbind(x,x[s-1,]+runif(nrow(x),-2,2)))
+                    rbind(x,x[s-1,]+rnorm(nrow(x),mean=0,sd=1)))
 
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
 
   if(any(unlist(all.alphas)<0) | any(unlist(all.nwins)<0)){
-    s=s-1
-    mnum=mnum-1 #should consolidate these
+    #s=s-1
+    #mnum=mnum-1 #should consolidate these
     print('neg alphas or windows prob.\n')
     
     for(d in seq_along(all.nwins)){
@@ -108,8 +108,8 @@ for(s in 2:n.samples){
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
     }
     
-    all.alphas
-    next
+    #all.alphas
+    #next
   }
   
   #draw random window samples
@@ -122,10 +122,16 @@ for(s in 2:n.samples){
   lp = length(levels(x$p)) == length(unique(tdat$p))
   lc = length(levels(x$c)) == length(unique(tdat$c))
   if(all(la,lp,lc)){
-    next
+    #next
+    
+    for(d in seq_along(all.nwins)){
+      all.nwins[[d]][s]=all.nwins[[d]][s-1]
+      
+      all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
+    }
   }
   
-  #collect model data
+  #collect model dataa
   nr=data.frame(a=length(levels(x$a)),
                 p=length(levels(x$p)),
                 c=length(levels(x$c)))
@@ -238,12 +244,15 @@ for(s in 2:n.samples){
         
 }#end sampling loop
 
-#get rid of model 1, which doens't exist
-allmods = allmods[2:length(allmods)]
-effects = effects[2:length(effects)]
-xhats = xhats[2:length(xhats)]
+#get rid of burnin
+
+burnin=round(n.samples/2)
+
+allmods = allmods[burnin:length(allmods)]r
+effects = effects[burnin:length(effects)]
+xhats = xhats[burnin:length(xhats)]
 breaks = lapply(breaks, function(x)
-  x[2:length(x)])
+  x[burnin:length(x)])
 
 ##post-processing --- best model
 bics=unlist(lapply(allmods,FUN=function(x) x$bic))
