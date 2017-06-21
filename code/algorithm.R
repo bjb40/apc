@@ -37,16 +37,18 @@ effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
 
-window.sample=function(var){
+window.sample=function(var,alph,nwins){
   #input is continuous of a,p,c
+  #alpha is a vector the length of unique entries in var that is fed to dirichelet
+  #nwins is the number of windows (integer--max is length(unique(var)))
   #output is factor with uniform, random window constraints
   #see dirichelet, e.g. for alternative algorithms
   vals=unique(var)
   
-  winprob=runif(1)/length(vals)
-  #partition=runif(length(vals)-1)>winprob
-  alpha = rgamma(length(vals)-1,length(vals),1)
-  dp=stick_draw(length(vals)-1,alpha) #proposal for alpha can just be gamma(1,1)
+  alph=unlist(alph)
+  
+  winprob=nwins/length(vals)/length(vals)
+  dp=stick_draw(length(vals)-1,alph) #proposal for alpha can just be gamma(1,1)
   partition=dp>winprob
 
   #assign windows of 1 if all false
@@ -62,23 +64,63 @@ window.sample=function(var){
 }
 
 #set of numbers of random samples
-n.samples=50
+n.samples=500
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
 breaks=list(a=list(),p=list(),c=list())
 
-for(s in 1:n.samples){
+d = c('a','p','c')
+
+#set starting values
+all.alphas = lapply(d,function(x) data.frame(t(rep(20,length(unique(tdat[,x]))-1))))
+all.nwins = lapply(d,function(x) length(unique(tdat[,x])/2))
+
+names(all.alphas) = names(all.nwins) = d
+
+#accept rate
+acc=0
+
+#mh sampler
+for(s in 2:n.samples){
 
   #reset dataframe
   x=tdat[,c('a','p','c')]
   
+  #draw from proposal distributions
+  all.nwins = lapply(all.nwins,function(x)
+                     append(x,x[s-1] + round(runif(1,-1,1)*2))
+  )
+  
+  all.alphas= lapply(all.alphas, function(x)
+                    rbind(x,x[s-1,]+runif(nrow(x),-2,2)))
+
+  for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
+
+  if(any(unlist(all.alphas)<0) | any(unlist(all.nwins)<0)){
+    s=s-1
+    mnum=mnum-1 #should consolidate these
+    print('neg alphas or windows prob.\n')
+    
+    for(d in seq_along(all.nwins)){
+      all.nwins[[d]][s]=all.nwins[[d]][s-1]
+      
+      all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
+    }
+    
+    all.alphas
+    next
+  }
+  
   #draw random window samples
-  x$a=window.sample(x$a); la = length(levels(x$a)) == length(unique(tdat$a))
-  x$p=window.sample(x$p); lp = length(levels(x$p)) == length(unique(tdat$p))
-  x$c=window.sample(x$c); lc = length(levels(x$c)) == length(unique(tdat$c))
+  x$a=window.sample(x$a,all.alphas$a[s,],all.nwins$a[s]) 
+  x$p=window.sample(x$p,all.alphas$p[s,],all.nwins$p[s]) 
+  x$c=window.sample(x$c,all.alphas$c[s,],all.nwins$c[s]) 
   
   #skip if unideintified
+  la = length(levels(x$a)) == length(unique(tdat$a))
+  lp = length(levels(x$p)) == length(unique(tdat$p))
+  lc = length(levels(x$c)) == length(unique(tdat$c))
   if(all(la,lp,lc)){
     next
   }
@@ -115,12 +157,9 @@ for(s in 1:n.samples){
         C(c,contr.treatment(c.lev,base=c.b))"))
       
       xmat = model.matrix(form.c,data=x)
-      m = allmods[[mnum]] = lin_gibbs(y=y,x=xmat)
+      m = allmods[[s]] = lin_gibbs(y=y,x=xmat)
       
-      #consider limiting base on occam's window...
-      #how can I incorporate grandmeans into calculation of beta-hat?
-      #also, some don't have this .... 
-      #grand.means=t(as.matrix(colSums(model.matrix(form.c,x))/nrow(x)))
+      
       
       #this seems to match the 's1' margin property
       grand.means = data.frame(
@@ -152,7 +191,7 @@ for(s in 1:n.samples){
         #fix colnames
         colnames(predat[[eff]]) = sub('x',eff,colnames(predat[[eff]]))
         
-        #calculate means for xhat, & id effects at issue 
+        #calculate means for xhat, & id effects at issue---this was replaced...
         xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
 
         #replace means of effect dimensions with indicator in matrix
@@ -172,16 +211,42 @@ for(s in 1:n.samples){
       #ytilde
       #ppd[[mnum]] = 
       
-#      if(length(allmods)%%10==0){
+      #if(length(allmods)%%10==0){
         avtm=(avtm*(length(allmods)-1)+Sys.time()-tm)/length(allmods)
         cat('Average model time:',avtm,'\n\n')
         tm=Sys.time()
-
+        
+        
+        if(s==2){next}
+        
+        #selection criterion
+        R = mean(allmods[[s]]$ll) - mean(allmods[[s-1]]$ll)
+        
+        if (R > log(runif(1))){
+          acc = acc+1
+        } else {
+          
+          for(d in seq_along(all.nwins)){
+             all.nwins[[d]][s]=all.nwins[[d]][s-1]
+          
+            all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
+          }
+          #next
+          
+        }
+        
+        
 }#end sampling loop
 
+#get rid of model 1, which doens't exist
+allmods = allmods[2:length(allmods)]
+effects = effects[2:length(effects)]
+xhats = xhats[2:length(xhats)]
+breaks = lapply(breaks, function(x)
+  x[2:length(x)])
 
 ##post-processing --- best model
-bics=unlist(lapply(effects,FUN=function(x) x$bic))
+bics=unlist(lapply(allmods,FUN=function(x) x$bic))
 bics_prime=unlist(lapply(allmods,FUN=function(x) x$bic_prime))
 r2=unlist(lapply(allmods,FUN=function(x) mean(x$r2)))
 
@@ -560,6 +625,6 @@ window.summary =  win %>% dplyr::select(a,p,c) %>%
       bic_prime.win=weighted.mean(.,w=win$w_prime))
       ) 
 
-print(t.window.summary)
+print(t(window.summary))
 load(paste0(datdir,'sim2_tbeta.RData'))
 print(t.beta)
