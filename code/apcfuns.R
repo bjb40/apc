@@ -3,7 +3,7 @@
 #
 #Bryce Bartlett
 
-
+library(MCMCpack)
 library(ggplot2)
 
 #make an S3 object: 
