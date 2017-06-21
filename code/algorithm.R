@@ -48,7 +48,7 @@ window.sample=function(var,alph,nwins){
   alph=unlist(alph)
   
   winprob=nwins/length(vals)/length(vals)
-  dp=stick_draw(length(vals)-1,alph) #proposal for alpha can just be gamma(1,1)
+  dp=rdirichlet(1,alph) #proposal for alpha can just be gamma(1,1)
   partition=dp>winprob
 
   #assign windows of 1 if all false
@@ -100,7 +100,7 @@ for(s in 2:n.samples){
   if(any(unlist(all.alphas)<0) | any(unlist(all.nwins)<0)){
     #s=s-1
     #mnum=mnum-1 #should consolidate these
-    print('neg alphas or windows prob.\n')
+    cat('\n\nOut-of-Sample-Space Warning: Negative alphas or windows problem.\n\n')
     
     for(d in seq_along(all.nwins)){
       all.nwins[[d]][s]=all.nwins[[d]][s-1]
@@ -142,14 +142,17 @@ for(s in 2:n.samples){
   breaks$p[[s]]=attr(x$p,'breaks')
   breaks$c[[s]]=attr(x$c,'breaks')
   
-
+if(s%%10==0){
       cat('\n\nEstimating model',length(allmods),
             'with windows:',
             '\n\tage    ',nr$a,
             '\n\tperiod ',nr$p,
             '\n\tcohort ',nr$c,
-            '\n\n')
-            
+            '\n',
+        'accptance rate:',(acc/n.samples),
+        '\nAverage model time:',avtm,
+        '\n\n')
+}            
       #add esitmate / lin_gibbs is bayesian gibbs sampler
       mnum = length(allmods)+1
       
@@ -165,9 +168,9 @@ for(s in 2:n.samples){
       xmat = model.matrix(form.c,data=x)
       m = allmods[[s]] = lin_gibbs(y=y,x=xmat)
       
-      
-      
       #this seems to match the 's1' margin property
+      #i don't acutally have to do the scopedummy stuff, b/c I can use the yhat
+      #from the lin_gibbs/same with the sampling below
       grand.means = data.frame(
         a = window(mean(tdat$a),breaks=attr(x$a,'breaks')),
         p = window(mean(tdat$p),breaks=attr(x$p,'breaks')),
@@ -217,11 +220,9 @@ for(s in 2:n.samples){
       #ytilde
       #ppd[[mnum]] = 
       
-      #if(length(allmods)%%10==0){
         avtm=(avtm*(length(allmods)-1)+Sys.time()-tm)/length(allmods)
-        cat('Average model time:',avtm,'\n\n')
         tm=Sys.time()
-        
+      
         
         if(s==2){next}
         
@@ -245,14 +246,18 @@ for(s in 2:n.samples){
 }#end sampling loop
 
 #get rid of burnin
+#burnin=round(n.samples/2)
 
-burnin=round(n.samples/2)
-
-allmods = allmods[burnin:length(allmods)]r
-effects = effects[burnin:length(effects)]
-xhats = xhats[burnin:length(xhats)]
+allmods = allmods[2:length(allmods)]
+effects = effects[2:length(effects)]
+xhats = xhats[2:length(xhats)]
 breaks = lapply(breaks, function(x)
-  x[burnin:length(x)])
+  x[2:length(x)])
+
+#win=win %>% 
+#  filter(modnum>=burnin) %>%
+#  mutate(modnum=1:length(allmods))
+
 
 ##post-processing --- best model
 bics=unlist(lapply(allmods,FUN=function(x) x$bic))
@@ -319,7 +324,7 @@ for(d in c('a','p','c')){
 pdf(file=paste0(imdir,'best-fit.pdf'))
 
   pltrange=range(unlist(
-    lapply(preds,function(x) range(x %>% select(-id)))
+    lapply(preds,function(x) range(x %>% dplyr::select(-id)))
   ))
   
   grid.arrange(best.plt[['a']] + ylim(pltrange),

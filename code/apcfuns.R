@@ -310,7 +310,15 @@ lin_gibbs = function(y,x){
   #bic=log(n)*ncol(x)-2*mean(ll)
   
   #sigma is poorly named
-  return(list(betas=b,sigma=s2,r2=r2,rmse=rmse,bic=bic,bic_prime=bic_prime,ll=ll))
+  return(list(betas=b,
+              yhat=yhat,
+              sigma=s2,
+              ytilde=yhat+rnorm(length(yhat),mean=0,sd=s2),
+              r2=r2,
+              rmse=rmse,
+              bic=bic,
+              bic_prime=bic_prime,
+              ll=ll))
   
 }#end linear gibbs
 
