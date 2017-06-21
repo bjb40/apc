@@ -314,3 +314,15 @@ lin_gibbs = function(y,x){
   
 }#end linear gibbs
 
+
+#dirichelet sampler
+
+#higher alpha leads to higher probability of lower values
+#alpha of 1 is equal probability across all draws
+stick_draw = function(num.vals, alpha) {
+  betas = rbeta(num.vals, 1, alpha)
+  stick.to.right = c(1, cumprod(1 - betas))[1:num.vals]
+  weights = stick.to.right * betas
+  weights
+}
+

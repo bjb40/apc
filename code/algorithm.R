@@ -43,10 +43,12 @@ window.sample=function(var){
   #see dirichelet, e.g. for alternative algorithms
   vals=unique(var)
   
-  mean.wins=round(runif(1)*length(vals))
-  winprob=1-(mean.wins/length(vals))
-  partition=runif(length(vals)-1)>winprob
-  
+  winprob=runif(1)/length(vals)
+  #partition=runif(length(vals)-1)>winprob
+  alpha = rgamma(length(vals)-1,length(vals),1)
+  dp=stick_draw(length(vals)-1,alpha) #proposal for alpha can just be gamma(1,1)
+  partition=dp>winprob
+
   #assign windows of 1 if all false
   if(!any(partition)){
     wins=window(var,winlength=1)
@@ -115,7 +117,6 @@ for(s in 1:n.samples){
       xmat = model.matrix(form.c,data=x)
       m = allmods[[mnum]] = lin_gibbs(y=y,x=xmat)
       
-
       #consider limiting base on occam's window...
       #how can I incorporate grandmeans into calculation of beta-hat?
       #also, some don't have this .... 
@@ -279,6 +280,8 @@ win$wt=w; win$w_prime=w_prime; win$r2=r2; win$bic=bics; win$bic_prime=bics_prime
 win$rmse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse))) 
 #inverse weight by rmse (larger values are smaller weights)
 win$rmsewt = 1/win$rmse/sum(1/win$rmse)
+win$mse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse^2))) 
+win$msewt=1/win$mse/sum(1/win$mse)
 
 win$modnum=1:nrow(win)
 
@@ -557,5 +560,6 @@ window.summary =  win %>% dplyr::select(a,p,c) %>%
       bic_prime.win=weighted.mean(.,w=win$w_prime))
       ) 
 
+print(t.window.summary)
 load(paste0(datdir,'sim2_tbeta.RData'))
 print(t.beta)

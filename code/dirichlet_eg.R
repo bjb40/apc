@@ -3,6 +3,7 @@
 par(mfrow=c(2,2))
 
 #higher alpha leads to higher probability of lower values
+#alpha of 1 is equal probability across all draws
 stick_draw = function(num.vals, alpha) {
   betas = rbeta(num.vals, 1, alpha)
   stick.to.right = c(1, cumprod(1 - betas))[1:num.vals]
