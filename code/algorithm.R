@@ -393,8 +393,8 @@ win$msewt=1/win$mse/sum(1/win$mse)
 win$modnum=1:nrow(win)
 
 #select weight
-#use.wt='rmsewt'
-use.wt='wt'
+use.wt='rmsewt'
+#use.wt='wt'
 
 for(mod in seq_along(effects)){
   effects[[mod]]$w=win[,use.wt][mod]
