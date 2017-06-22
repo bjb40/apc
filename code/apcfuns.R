@@ -5,6 +5,7 @@
 
 library(MCMCpack)
 library(ggplot2)
+library(dplyr)
 
 #make an S3 object: 
 #http://www.cyclismo.org/tutorial/R/s3Classes.html#memory-management

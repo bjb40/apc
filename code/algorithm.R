@@ -47,10 +47,12 @@ window.sample=function(var,alph,nwins){
   
   alph=unlist(alph)
   
+  #note that breaks are *inclusive*, i.e. if it breaks at a value, the value
+  #is included...
   winprob=nwins/length(vals)/length(vals)
   dp=rdirichlet(1,alph) #proposal for alpha can just be gamma(1,1)
   partition=dp>winprob
-
+  
   #assign windows of 1 if all false
   if(!any(partition)){
     wins=window(var,winlength=1)
@@ -64,7 +66,7 @@ window.sample=function(var,alph,nwins){
 }
 
 #set of numbers of random samples
-n.samples=250
+n.samples=1000
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -73,8 +75,9 @@ breaks=list(a=list(),p=list(),c=list())
 d = c('a','p','c')
 
 #set starting values
-all.alphas = lapply(d,function(x) data.frame(t(rep(20,length(unique(tdat[,x]))-1))))
-all.nwins = lapply(d,function(x) length(unique(tdat[,x])/2))
+all.alphas = lapply(d,function(x) data.frame(t(rep(1,length(unique(tdat[,x]))-1))))
+all.nwins = lapply(d,function(x) length(unique(tdat[,x])/1.1))
+#all.nwins = lapply(d,function(x) 2)
 
 names(all.alphas) = names(all.nwins) = d
 
@@ -89,11 +92,11 @@ for(s in 2:n.samples){
   
   #draw from proposal distributions
   all.nwins = lapply(all.nwins,function(x)
-                     append(x,x[s-1] + rnorm(1,mean=0,sd=1))
+                     append(x,x[s-1] + rnorm(1,mean=0,sd=2))
   )
   
   all.alphas= lapply(all.alphas, function(x)
-                    rbind(x,x[s-1,]+rnorm(nrow(x),mean=0,sd=1)))
+                    rbind(x,x[s-1,]+rnorm(nrow(x),mean=0,sd=.0725)))
 
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
 
@@ -101,7 +104,7 @@ for(s in 2:n.samples){
     #s=s-1
     #mnum=mnum-1 #should consolidate these
     cat('\n\nOut-of-Sample-Space Warning: Negative alphas or windows problem.\n\n')
-    
+    acc=acc-1
     for(d in seq_along(all.nwins)){
       all.nwins[[d]][s]=all.nwins[[d]][s-1]
       
@@ -149,7 +152,16 @@ if(s%%10==0){
             '\n\tperiod ',nr$p,
             '\n\tcohort ',nr$c,
             '\n',
-        'accptance rate:',(acc/n.samples),
+          'windows:\n',
+              '\t',unlist(lapply(all.nwins,function(x) round(x[[s]],2))),
+          '\nmin alphas:\n',
+              '\t',
+  unlist(lapply(all.alphas,function(x) round(min(unlist(x[s,])),4))),
+  '\nmax alphas:\n',
+  '\t',
+  unlist(lapply(all.alphas,function(x) round(max(unlist(x[s,])),4))),
+  
+        '\nacceptance rate:',(acc/n.samples),
         '\nAverage model time:',avtm,
         '\n\n')
 }            
@@ -257,7 +269,6 @@ breaks = lapply(breaks, function(x)
 #win=win %>% 
 #  filter(modnum>=burnin) %>%
 #  mutate(modnum=1:length(allmods))
-
 
 ##post-processing --- best model
 bics=unlist(lapply(allmods,FUN=function(x) x$bic))
@@ -468,32 +479,19 @@ dev.off()
 #post.size=10000
 post.size=1000
 ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
-post.mods = sample(win$modnum,size=post.size,
+post.mods = base::sample(win$modnum,size=post.size,
                    replace=TRUE,prob=win$rmsewt)
 
-#error here
+#drawing posterior samples (with replacement)
+
 for(i in seq_along(post.mods)){
   i.win=win[post.mods[i],]
   modnum=i.win$modnum
-  xhat=tdat[,c('a','p','c')]
-  #calculate yhat|a single draw from the model
-    xhat$a=window(tdat$a,breaks=breaks$a[[modnum]])
-      #xhat$a = relevel(xhat$a,ref=a.b)
-    xhat$p=window(tdat$p,breaks=breaks$p[[modnum]])
-      #xhat$p = relevel(xhat$b,ref=p.b)
-    xhat$c=window(tdat$c,breaks=breaks$c[[modnum]])
-      #xhat$c = relevel(xhat$c,ref=c.b)
-      
-  xhat = as.data.frame(xhat)
-  xhat = model.matrix(~.,xhat)
+
+  ytilde[,i] = allmods[[modnum]]$yhat + 
+    rnorm(nrow(ytilde),mean=0,sd=allmods[[modnum]]$sigma)
   
-  #draw single set of betas and calculate yhat
-  #these betas might be good to use for estimating
-  #the mean and standard error (instead of the weighted avgs 
-  #above)
-  b = allmods[[modnum]]$beta[sample(1:1000,1),]
-  s2 = allmods[[modnum]]$sigma
-  ytilde[,i] = xhat %*% b + rnorm(nrow(xhat),mean=0,sd=s2)
+  #ytilde[,i] = xhat %*% b + rnorm(nrow(xhat),mean=0,sd=s2)
   
   if(i%%100==0){
     cat(i, 'of', length(post.mods),'\n')
@@ -511,22 +509,22 @@ print(summary(as.vector(ytilde)))
 #mean
 print('omnibus bayesian p-value of mean')
 print(sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde))
+
 #sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
 #sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
 
-
 #bayesian p-values by period 
-library(dplyr)
 
 print('period pvalues')
 actual.period = aggregate(tdat[,dv],by=list(tdat$p),mean)
 ytilde.period =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$p),mean)[[2]]
 )
-sapply(seq_along(actual.period[[1]]),function(i)
-  sum(ytilde.period[i,]>actual.period[i,2])/ncol(ytilde)
+print(
+  sapply(seq_along(actual.period[[1]]),function(i)
+    sum(ytilde.period[i,]>actual.period[i,2])/ncol(ytilde)
+  )
 )
-
 
 #bayesian p-values by cohort 
 print('cohort pvalues')
@@ -535,20 +533,22 @@ actual.cohort = aggregate(tdat[,dv],by=list(tdat$c),mean)
 ytilde.cohort =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$c),mean)[[2]]
 )
-sapply(seq_along(actual.cohort[[1]]),function(i)
-  sum(ytilde.cohort[i,]>actual.cohort[i,2])/ncol(ytilde)
+print(
+  sapply(seq_along(actual.cohort[[1]]),function(i)
+    sum(ytilde.cohort[i,]>actual.cohort[i,2])/ncol(ytilde)
+  )
 )
-
 
 #bayesian p-values by age 
 print('age pvalues')
-
 actual.age = aggregate(tdat[,dv],by=list(tdat$a),mean)
 ytilde.age =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$a),mean)[[2]]
 )
-sapply(seq_along(actual.age[[1]]),function(i)
-  sum(ytilde.age[i,]>actual.age[i,2])/ncol(ytilde)
+print(
+  sapply(seq_along(actual.age[[1]]),function(i)
+    sum(ytilde.age[i,]>actual.age[i,2])/ncol(ytilde)
+  )
 )
 sink()
 
