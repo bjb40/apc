@@ -37,7 +37,7 @@ effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
 
-window.sample=function(var,alph){
+window.sample=function(var,alph,nwins){
   #input is continuous of a,p,c
   #alpha is a vector the length of unique entries in var that is fed to dirichelet
   #output is factor with uniform, random window constraints
@@ -49,9 +49,18 @@ window.sample=function(var,alph){
 
   dp=rdirichlet(1,alph)
   #segment the stick
-  breaks=vals[unique(floor(cumsum(dp*len)))]
+  segments=floor(cumsum(dp*nwins))
+  #identify changes in segments
+  sb=segments
+  for(i in seq_along(segments)){
+    if(i==1){next}
+    sb[i] = segments[i]-segments[i-1]
+  }
   
-  #because breaks are *inclusive*, must include min-1
+  #id inclusive breaks
+  breaks=vals[sb>=1]
+  
+  #because breaks are *inclusive*, must include min-1; ensure max
   if(min(breaks)>(min(var)-1)){
     breaks=c((min(var)-1),breaks)
   }
@@ -60,13 +69,17 @@ window.sample=function(var,alph){
   }
   
   wins=window(var,breaks=breaks)
-  #print(wins)
-  
+
   return(wins)
 }
 
 #set of numbers of random samples
-n.samples=1000
+n.samples=100
+
+##you are using the wrong test --- for MC3, should be bic approx to bayes factor
+#see raferty
+#also, your proposal for alpha can use a mulitvariate...
+
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -76,40 +89,53 @@ d = c('a','p','c')
 
 #set starting values
 all.alphas = lapply(d,function(x) data.frame(t(rep(1,length(unique(tdat[,x]))))))
+#all.nwins = lapply(d,function(x) 3)
+#all.nwins = lapply(d,function(x) length(unique(tdat[,x]))/2)
+all.nwins = lapply(d,function(x) length(unique(tdat[,x]))-1)
 
-
-names(all.alphas) = d
+names(all.alphas) = names(all.nwins) = d
 
 #accept rate
 acc=0
+#count boundary conditions rejections
+bound=0
 
-#mh sampler
+#mc3 sampler (prior model probabilities are equal)
 for(s in 2:n.samples){
 
   #reset dataframe
   x=tdat[,c('a','p','c')]
   
   #draw from proposal distributions
+  #all.nwins = lapply(all.nwins, function(x)
+  #                        append(x,x[s-1]+rnorm(1,mean=0,sd=2)))
+  all.nwins = lapply(list(a='a',p='p',c='c'),function(x)
+    append(all.nwins[[x]],runif(1,1,length(unique(tdat[,paste(x)]))))
+    )
+
+  
   all.alphas= lapply(all.alphas, function(x)
-                    rbind(x,x[s-1,]+rnorm(nrow(x),mean=0,sd=.0725)))
+                    rbind(x,x[s-1,]+rnorm(nrow(x),mean=0,sd=0.1)))
 
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
 
-  if(any(unlist(all.alphas)<0)){
+  if(any(unlist(all.alphas)<0 | any(unlist(all.nwins)<2))){
     #s=s-1
     #mnum=mnum-1 #should consolidate these
-    cat('\n\nOut-of-Sample-Space Warning: Negative alphas or windows problem.\n\n')
+    cat('\n\nOut-of-Sample-Space Warning.\n\n')
     #acc=acc-1
     for(d in seq_along(all.alphas)){
+      all.nwins[[d]][s]=all.nwins[[d]][s-1]
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
+      bound=bound+1 #note that this samples different windows with same hyper param
     }
 
   }
   
   #draw random window samples
-  x$a=window.sample(x$a,all.alphas$a[s,]) 
-  x$p=window.sample(x$p,all.alphas$p[s,]) 
-  x$c=window.sample(x$c,all.alphas$c[s,]) 
+  x$a=window.sample(x$a,all.alphas$a[s,],all.nwins$a[s]) 
+  x$p=window.sample(x$p,all.alphas$p[s,],all.nwins$p[s]) 
+  x$c=window.sample(x$c,all.alphas$c[s,],all.nwins$c[s]) 
   
   #skip if unideintified
   la = length(levels(x$a)) == length(unique(tdat$a))
@@ -117,11 +143,12 @@ for(s in 2:n.samples){
   lc = length(levels(x$c)) == length(unique(tdat$c))
   if(all(la,lp,lc)){
     for(d in seq_along(all.alphas)){
+      all.nwins[[d]][s]=all.nwins[[d]][s-1]
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
     }
   }
   
-  #collect model dataa
+  #collect model data
   nr=data.frame(a=length(levels(x$a)),
                 p=length(levels(x$p)),
                 c=length(levels(x$c)))
@@ -139,10 +166,12 @@ if(s%%10==0){
             '\n\tperiod ',nr$p,
             '\n\tcohort ',nr$c,
             '\n',
-          '\nmin alphas:\n',
+          '\nwindows:\n\t',
+          unlist(lapply(all.nwins, function(x) round(x[s],2))),
+          '\nalphas\n\tmin:\n',
               '\t',
   unlist(lapply(all.alphas,function(x) round(min(unlist(x[s,])),4))),
-  '\nmax alphas:\n',
+  '\n\tmax:\n',
   '\t',
   unlist(lapply(all.alphas,function(x) round(max(unlist(x[s,])),4))),
   
@@ -224,13 +253,18 @@ if(s%%10==0){
         if(s==2){next}
         
         #selection criterion
-        R = mean(allmods[[s]]$ll) - mean(allmods[[s-1]]$ll)
         
-        if (R > log(runif(1))){
+        #bayes factorf approximation
+        bf=exp((allmods[[s]]$bic-allmods[[s-1]]$bic)/2)
+        R = min(1,bf)
+        #R = min((allmods[[s]]$bic/ allmods[[s-1]]$bic),1)
+        #print(R)
+        if (R < runif(1)){
           acc = acc+1
         } else {
           
           for(d in seq_along(all.alphas)){
+            all.nwins[[d]][s]=all.nwins[[d]][s-1]
             all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
           }
 
@@ -360,7 +394,7 @@ win$modnum=1:nrow(win)
 
 #select weight
 #use.wt='rmsewt'
-use.wt=''
+use.wt='wt'
 
 for(mod in seq_along(effects)){
   effects[[mod]]$w=win[,use.wt][mod]
