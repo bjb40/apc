@@ -9,7 +9,7 @@ dv='y1'
 actual='s1'
 
 #load test data
-#load(paste0(datdir,'testdat.RData'))
+#load(paste0(datdir,'testdat.RData')) #this is luo
 load(paste0(datdir,'nsim.RData'))
 
 
@@ -330,7 +330,7 @@ for(d in c('a','p','c')){
   preds[[d]]$up = rng[2,]
   preds[[d]]$down = rng[1,]
   #s1-s4 are for scenarios --- needs to match with y1-y4
-  preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
+  preds[[d]]$actual=pltdat[[d]]$s2[order(pltdat[[d]]$id)]
   
   preds[[d]]$id=unique(tdat[,d])[order(pltdat[[d]]$id)]
   #preds[[d]]=preds[[d]] %>% arrange(id)
