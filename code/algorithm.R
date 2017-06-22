@@ -37,30 +37,30 @@ effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
 
-window.sample=function(var,alph,nwins){
+window.sample=function(var,alph){
   #input is continuous of a,p,c
   #alpha is a vector the length of unique entries in var that is fed to dirichelet
-  #nwins is the number of windows (integer--max is length(unique(var)))
   #output is factor with uniform, random window constraints
   #see dirichelet, e.g. for alternative algorithms
-  vals=unique(var)
+  vals=unique(var) #center on 0; assume continuous
+  len=length(vals)
   
   alph=unlist(alph)
+
+  dp=rdirichlet(1,alph)
+  #segment the stick
+  breaks=vals[unique(floor(cumsum(dp*len)))]
   
-  #note that breaks are *inclusive*, i.e. if it breaks at a value, the value
-  #is included...
-  winprob=nwins/length(vals)/length(vals)
-  dp=rdirichlet(1,alph) #proposal for alpha can just be gamma(1,1)
-  partition=dp>winprob
-  
-  #assign windows of 1 if all false
-  if(!any(partition)){
-    wins=window(var,winlength=1)
-  } else{
-    breaks=vals[which(partition==TRUE)]
-    breaks=unique(c(min(var)-1,breaks,max(var)))
-    wins=window(var,breaks=breaks)
+  #because breaks are *inclusive*, must include min-1
+  if(min(breaks)>(min(var)-1)){
+    breaks=c((min(var)-1),breaks)
   }
+  if(max(breaks)<max(var)){
+    breaks=c(breaks,max(var))
+  }
+  
+  wins=window(var,breaks=breaks)
+  #print(wins)
   
   return(wins)
 }
@@ -75,11 +75,10 @@ breaks=list(a=list(),p=list(),c=list())
 d = c('a','p','c')
 
 #set starting values
-all.alphas = lapply(d,function(x) data.frame(t(rep(1,length(unique(tdat[,x]))-1))))
-all.nwins = lapply(d,function(x) length(unique(tdat[,x])/1.1))
-#all.nwins = lapply(d,function(x) 2)
+all.alphas = lapply(d,function(x) data.frame(t(rep(1,length(unique(tdat[,x]))))))
 
-names(all.alphas) = names(all.nwins) = d
+
+names(all.alphas) = d
 
 #accept rate
 acc=0
@@ -91,45 +90,33 @@ for(s in 2:n.samples){
   x=tdat[,c('a','p','c')]
   
   #draw from proposal distributions
-  all.nwins = lapply(all.nwins,function(x)
-                     append(x,x[s-1] + rnorm(1,mean=0,sd=2))
-  )
-  
   all.alphas= lapply(all.alphas, function(x)
                     rbind(x,x[s-1,]+rnorm(nrow(x),mean=0,sd=.0725)))
 
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
 
-  if(any(unlist(all.alphas)<0) | any(unlist(all.nwins)<0)){
+  if(any(unlist(all.alphas)<0)){
     #s=s-1
     #mnum=mnum-1 #should consolidate these
     cat('\n\nOut-of-Sample-Space Warning: Negative alphas or windows problem.\n\n')
-    acc=acc-1
-    for(d in seq_along(all.nwins)){
-      all.nwins[[d]][s]=all.nwins[[d]][s-1]
-      
+    #acc=acc-1
+    for(d in seq_along(all.alphas)){
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
     }
-    
-    #all.alphas
-    #next
+
   }
   
   #draw random window samples
-  x$a=window.sample(x$a,all.alphas$a[s,],all.nwins$a[s]) 
-  x$p=window.sample(x$p,all.alphas$p[s,],all.nwins$p[s]) 
-  x$c=window.sample(x$c,all.alphas$c[s,],all.nwins$c[s]) 
+  x$a=window.sample(x$a,all.alphas$a[s,]) 
+  x$p=window.sample(x$p,all.alphas$p[s,]) 
+  x$c=window.sample(x$c,all.alphas$c[s,]) 
   
   #skip if unideintified
   la = length(levels(x$a)) == length(unique(tdat$a))
   lp = length(levels(x$p)) == length(unique(tdat$p))
   lc = length(levels(x$c)) == length(unique(tdat$c))
   if(all(la,lp,lc)){
-    #next
-    
-    for(d in seq_along(all.nwins)){
-      all.nwins[[d]][s]=all.nwins[[d]][s-1]
-      
+    for(d in seq_along(all.alphas)){
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
     }
   }
@@ -152,8 +139,6 @@ if(s%%10==0){
             '\n\tperiod ',nr$p,
             '\n\tcohort ',nr$c,
             '\n',
-          'windows:\n',
-              '\t',unlist(lapply(all.nwins,function(x) round(x[[s]],2))),
           '\nmin alphas:\n',
               '\t',
   unlist(lapply(all.alphas,function(x) round(min(unlist(x[s,])),4))),
@@ -245,12 +230,10 @@ if(s%%10==0){
           acc = acc+1
         } else {
           
-          for(d in seq_along(all.nwins)){
-             all.nwins[[d]][s]=all.nwins[[d]][s-1]
-          
+          for(d in seq_along(all.alphas)){
             all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
           }
-          #next
+
           
         }
         
@@ -376,7 +359,8 @@ win$msewt=1/win$mse/sum(1/win$mse)
 win$modnum=1:nrow(win)
 
 #select weight
-use.wt='rmsewt'
+#use.wt='rmsewt'
+use.wt=''
 
 for(mod in seq_along(effects)){
   effects[[mod]]$w=win[,use.wt][mod]
