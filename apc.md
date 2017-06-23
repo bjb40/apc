@@ -42,31 +42,29 @@ $$
 
 where $\beta$ is an estimated effect, $\lambda$, $\rho$ and $\kappa$ index unique values for age, period, and cohort, and $A$, $P$, and $C$ stand for matricies of dummy variable series for age, period, and cohort. This model is unidentified, because, as with the continuous case, the dummy variables in any two of the matricies above condition the third matrix. In other words, the indicator variable in $C$ is a function of the indicators in $A$ and $P$ (in mathematical terms,the probability that any given cohort dummy variable is one or zero is exctly dependent on the values of A and P, so that $p(C_{\kappa}=0|A_{\lambda},P_{\kappa}$) is either exaclty zero, or exactly one).
 
-This dependency is broken, however, by combining one or more of the unique values together so that they share the same dummy variable series. By way of example, we can construct an age dummy variable series where $A$ is sliced into two groups based on some cut-point, $g$, as follows:
+This dependency is broken, however, by combining one or more of the unique values together so that they share the same dummy variable series. By way of example, we can construct an age dummy variable series where $A$ is sliced into two groups based on some cut-point, say $g$, so that ...
 
-$$
-A_1  =
-\begin{cases}
-  1, & \mbox{iff } a < g
-  \\ 0, & \mbox{iff } a \geq g
-\end{cases}
-$$
+```work here```
+
 
 This would identify a binary dummy variable with an older and a younger group. We can generalize this expression to an arbitrary vector of cut-points, $G$ with subscript $\gamma$ so that 
 
-```this doesn't quite describe the vector you're using in your R program```
 
 $$
+\mbox{for} \gamma < max(\gamma):
 A_{\lambda}  =
 \begin{cases}
-  1, & \mbox{iff } a < G_{\gamma}
-  \\ 0, & \mbox{iff } a \geq G_{\gamma}
-\end{cases} 
+  1, & \mbox{if} & a > G_{\gamma} & \mbox{and} & a \leq G_{\gamma+1} \\
+  0, & \mbox{if} & a < G_{\gamma} & \mbox{or} & a > G_{\gamma+1}
+\end{cases}
 $$
 
-for all $\gamma$ . If the vector $G$ has the following properties: $max(G) = max(a)$ and $min(G) < min(a)), it can describe all possible contiguous cut points for age.
 
-##The MC3 Algorithm and Bayesian Model Averaging
+If the vector $G$ and $\lambda$ have the following properties: $max(G) = max(a)$ and $min(G) < min(a)$, $\lambda \in  \{1,2, ... {\gamma-1}\}$, then $G$ can describe any arbitrary set of window restrictions for age. Generalizing cross all dimensions of APC, permuting three similar vectors (say $G^{(d)}$) can describe the model space ($\mathscr{M}$) for all possible window constraints for APC models described in equation __. Only one of these models is inestimable because of perfect colinearity. For any given set of data, the model space is finite, but it can be quite large. For example, with 10 unique ages, periods, and cohorts, each, .... .
+
+Markov Chain methods for Bayesian Model Averaging (BMA) provides a sensible way to sample over a subset of continually better-fitting models and combine their estimates to produce an approximation of APC effects. The next two sections describe the MC3 agorithm developed for BMA, and outline the unique implementation of MC3 for this particular set of models, drawing from the Dirichelet distribution. 
+
+##Bayesian Model Averaging and the MC3 Algorithm 
 
 In principal, there is no one true (or best) model; instead quantities estimated conditional on a model have a posterior distribution which is a weighted average of all models [@rafferty_1995, p. 144-145]. 
 
