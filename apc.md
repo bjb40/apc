@@ -28,7 +28,11 @@ Instead of focusing on finding the *best* fitting model, as complicated as that 
 
 #Description of the Method
 
-```write an overview here```
+```revise here```
+
+1. 
+2. 
+3. 
 
 ##Blocking Windows: Piecewise Constant Functions
 
@@ -60,16 +64,31 @@ A_{\lambda}  =
 $$
 
 
-If the vector $G$ and $\lambda$ have the following properties: $max(G) = max(a)$ and $min(G) < min(a)$, $\lambda \in  \{1,2, ... {\gamma-1}\}$, then $G$ can describe any arbitrary set of window restrictions for age. Generalizing cross all dimensions of APC, permuting three similar vectors (say $G^{(d)}$) can describe the model space ($\mathscr{M}$) for all possible window constraints for APC models described in equation __. Only one of these models is inestimable because of perfect colinearity. For any given set of data, the model space is finite, but it can be quite large. For example, with 10 unique ages, periods, and cohorts, each, .... .
+If the vector $G$ and $\lambda$ have the following properties: $max(G) = max(a)$, $min(G) < min(a)$, $\lambda \in  \{1,2, ... {\gamma-1}\}$, and $\gamma>2$, then $G$ can describe any posible sets of window restrictions for age. Generalizing cross all dimensions of APC, permuting three similar vectors (say $G^{(d)}$) will describe any model for any possible window constraints detailed in equation 1. Accordingly, all permutations of G, as defined above, constitute the model space of window constraints ($\mathscr{M}$). For any given set of data, $\matscr{M}$ is finite, but it can be quite large. For example, 10 unique ages, periods, and cohorts present ```__``` possible models. ```describe how``` Of these```__``` models, only 1 is not estimable because of perfect colinearity. This target model is (theoretially) the least biased, although it is not the most parsimonious model. The question is how to best use infromation from some subset fo possible models in $\mathscr{M}$ to estimate unbiased APC effects. Bayesian Model Averaging (BMA) provides a straightforward way to combine models. The theoretical backdrop applies to this curcumstance quite well. In principal, there is no one true (or best) model; instead estimates are conditional on models from the modeling space ($\mathscr{M}$), and have  a posterior distribution, which is calculated as a weighted average of all models [@rafferty_1995, p. 144-145].  It has been applied in diverse areas from weather forecasting to biology to social science [@fragaso_bayesian_2015] .
+
+##Bayesian Model Averaging (BMA) and the MC3 Algorithm 
 
 Markov Chain methods for Bayesian Model Averaging (BMA) provides a sensible way to sample over a subset of continually better-fitting models and combine their estimates to produce an approximation of APC effects. The next two sections describe the MC3 agorithm developed for BMA, and outline the unique implementation of MC3 for this particular set of models, drawing from the Dirichelet distribution. 
 
-##Bayesian Model Averaging and the MC3 Algorithm 
+##Using the Dirichlet Distribution to Sample Window Groups (G)
 
-In principal, there is no one true (or best) model; instead quantities estimated conditional on a model have a posterior distribution which is a weighted average of all models [@rafferty_1995, p. 144-145]. 
+We simulate $G$ using two sets of nuisance parameters. For each dimension ($d$) of APC, the window breaks, $G^{(d)}$ of equaiton 2 are decomposed into (1) a vector of weights on the simplex ($B$), and (2) a scalar integer, $w^d$. $G^{(d)}$ is simply the product of $B$ times $w$. We sample $w$ from the uniform distibution, as follows:
 
-##Dirichlet as a Window-Length Sampler
+$$
+w^{(d)} \sim U(2,max(\omega_{d}))
+$$
 
+Where $\omega_{d}$ is the index number for the APC effects (the $\lambda$, $\rho$, and $\kappa$ of equaiton 1). We sample the weights using the dirichelet distribution:
+
+$$
+B^{(d)} \sim Dir(\alpha_{\omega_d})
+$$
+
+Where $G$ is the matrix described above in equation 2, and the $\alpha$ for the Dirichelet distribution are for each of the vunique values in the dimension ($d$) for APC. The Dirchelet distribution draws a random projection on the Simplex, *i.e.* avector of weights $\omega_d$ weights between 0 and 1, that sum to 1 ($\sum B = 1$). Multiplying this vector by the scalar $w$ provides a set of numbers which sum to $w^{(d)}$, and represents the number of windows in that dimension. We reduce the siplex by selecting only the unique values of the cumulative sums of $B$ times the mean length of the window $w$ as follows:
+
+$$
+G^{(d)}_ = \Bigg \lfloor w^{(d)} \sum_{i=1}^{\omega_d} B^{(d)}_i \Bigg \rfloor
+$$
 
 #A Simulation
 
