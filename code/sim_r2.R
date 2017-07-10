@@ -39,10 +39,12 @@ colnames(t.beta)=c('a','a2','p','p2','c','c2')
 #rescale quadratic effects to be smaller
 t.beta[,c('a2','p2','c2')] = t.beta[,c('a2','p2','c2')]/10
 
-save(t.beta,file=paste0(datdir,'sim2_tbeta.RData'))
-
 #kill effect
 t.beta[,c('c','c2')] = 0
+
+save(t.beta,file=paste0(datdir,'sim2_tbeta.RData'))
+
+
 
 #set r2--need to fix
 

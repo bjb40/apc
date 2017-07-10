@@ -74,7 +74,7 @@ window.sample=function(var,alph,nwins){
 }
 
 #set of numbers of random samples
-n.samples=20
+n.samples=25
 
 ##you are using the wrong test --- for MC3, should be bic approx to bayes factor
 #see raferty
@@ -120,6 +120,7 @@ for(s in 2:n.samples){
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
 
   if(any(unlist(all.alphas)<0 | any(unlist(all.nwins)<2))){
+    bound=bound+1
     #s=s-1
     #mnum=mnum-1 #should consolidate these
     cat('\n\nOut-of-Sample-Space Warning.\n\n')
@@ -127,7 +128,7 @@ for(s in 2:n.samples){
     for(d in seq_along(all.alphas)){
       all.nwins[[d]][s]=all.nwins[[d]][s-1]
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
-      bound=bound+1 #note that this samples different windows with same hyper param
+     #note that this samples different windows with same hyper param
     }
 
   }
