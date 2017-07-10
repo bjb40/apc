@@ -74,7 +74,7 @@ window.sample=function(var,alph,nwins){
 }
 
 #set of numbers of random samples
-n.samples=100
+n.samples=20
 
 ##you are using the wrong test --- for MC3, should be bic approx to bayes factor
 #see raferty
@@ -330,7 +330,7 @@ for(d in c('a','p','c')){
   preds[[d]]$up = rng[2,]
   preds[[d]]$down = rng[1,]
   #s1-s4 are for scenarios --- needs to match with y1-y4
-  preds[[d]]$actual=pltdat[[d]]$s2[order(pltdat[[d]]$id)]
+  preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
   
   preds[[d]]$id=unique(tdat[,d])[order(pltdat[[d]]$id)]
   #preds[[d]]=preds[[d]] %>% arrange(id)
