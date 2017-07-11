@@ -1,17 +1,36 @@
 ###
 
-#clear cache
-rm(list=ls())
 source('config~.R')
 
 #prelim
 dv='y1'
 actual='s1'
 
+#generate sims data if it doesn't exist
+#place summary, including pvalues, summary stats, estimates, and true beta...
+srf = paste0(outdir,'simres.RData')
+if(!file.exists(srf)){
+  simres = list()
+  save(simres,file=srf)
+  simnum = 1
+} else{
+  load(srf)
+  simnum = length(simres)+1
+}
+
+tempsim = list(tbeta = NULL, #true beta
+               r2 = NULL, #summary of r2 values
+               bic = NULL, #summar of BIC values
+               pvals = NULL, #list of bayesian p-values --- omnibus + sliced
+               wt = NULL, #weighting scheme
+               preds = NULL, #mean and best estimates w/actual and overlap (actual can be adj)
+               ppdsum = NULL, #summary of ppd 
+               datsum = NULL #summary of data
+)
+
 #load test data
 #load(paste0(datdir,'testdat.RData')) #this is luo
 load(paste0(datdir,'nsim.RData'))
-
 
 #@@@@@@@@@@@
 #sampling from model subspace
@@ -74,7 +93,7 @@ window.sample=function(var,alph,nwins){
 }
 
 #set of numbers of random samples
-n.samples=100
+n.samples=5
 
 ##you are using the wrong test --- for MC3, should be bic approx to bayes factor
 #see raferty
@@ -107,20 +126,26 @@ for(s in 2:n.samples){
   x=tdat[,c('a','p','c')]
   
   #draw from proposal distributions
-  all.nwins = lapply(all.nwins, function(x)
-                          append(x,x[s-1]+rnorm(1,mean=0,sd=1)))
+  #all.nwins = lapply(all.nwins, function(x)
+  #                        append(x,x[s-1]+rnorm(1,mean=0,sd=1)))
   all.nwins = lapply(list(a='a',p='p',c='c'),function(x)
-    append(all.nwins[[x]],runif(1,1,length(unique(tdat[,paste(x)]))))
+    append(all.nwins[[x]],runif(1,2,length(unique(tdat[,paste(x)]))))
     )
 
   
   all.alphas= lapply(all.alphas, function(x)
-                    rbind(x,x[s-1,]+rnorm(nrow(x),mean=0,sd=0.05)))
+                    rbind(x,x[s-1,]+rnorm(ncol(x),mean=0,sd=0.05)))
+  
+  #all.alphas= lapply(all.alphas, function(x)
+  #  rbind(x,runif(ncol(x),0,10)))
 
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
 
   if(any(unlist(all.alphas)<0 | any(unlist(all.nwins)<2))){
     bound=bound+1
+    out.al=sum(unlist(all.alphas)<0)
+    out.wi=sum(unlist(all.nwins)<2)
+    print(c(out.al,out.wi))
     #s=s-1
     #mnum=mnum-1 #should consolidate these
     cat('\n\nOut-of-Sample-Space Warning.\n\n')
@@ -395,8 +420,12 @@ win$msewt=1/win$mse/sum(1/win$mse)
 win$modnum=1:nrow(win)
 
 #select weight
-#use.wt='rmsewt'
-use.wt='wt'
+use.wt='rmsewt'
+#use.wt='wt'
+
+tempsim$wt = use.wt
+tempsim$samp = n.samples
+tempsim$acc = acc/n.samples
 
 for(mod in seq_along(effects)){
   effects[[mod]]$w=win[,use.wt][mod]
@@ -519,58 +548,67 @@ for(i in seq_along(post.mods)){
   
 }
 
+
+
 sink(paste0(outdir,'mean-fit-posterior-pval.txt'),type=c('output','message'))
 
 #omnibus bayesian pvalues
-print('Summary of acutal to posterior')
-print(summary(tdat[,dv]))
-print(summary(as.vector(ytilde)))
+#print('Summary of acutal to posterior')
+tempsim$datsum = summary(tdat[,dv])
+tempsim$ppdsum = summary(as.vector(ytilde))
+print(tempsim$datsum)
+print(tempsim$ppdsum)
+
+tempsim$pvals = list()
 
 #mean
 print('omnibus bayesian p-value of mean')
-print(sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde))
+tempsim$pvals[['omnibus']] = sum(apply(ytilde,2,mean)<mean(tdat$y1))/ncol(ytilde)
+print(tempsim$pvals[['omnibus']])
+
+sink()
 
 #sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
 #sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
 
 #bayesian p-values by period 
 
-print('period pvalues')
+#print('period pvalues')
 actual.period = aggregate(tdat[,dv],by=list(tdat$p),mean)
 ytilde.period =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$p),mean)[[2]]
 )
-print(
+
+tempsim$pvals[['p']] = 
   sapply(seq_along(actual.period[[1]]),function(i)
     sum(ytilde.period[i,]>actual.period[i,2])/ncol(ytilde)
   )
-)
+
 
 #bayesian p-values by cohort 
-print('cohort pvalues')
+#print('cohort pvalues')
 
 actual.cohort = aggregate(tdat[,dv],by=list(tdat$c),mean)
 ytilde.cohort =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$c),mean)[[2]]
 )
-print(
+tempsim$pvals[['c']] =
   sapply(seq_along(actual.cohort[[1]]),function(i)
     sum(ytilde.cohort[i,]>actual.cohort[i,2])/ncol(ytilde)
   )
-)
+
 
 #bayesian p-values by age 
-print('age pvalues')
+#print('age pvalues')
 actual.age = aggregate(tdat[,dv],by=list(tdat$a),mean)
 ytilde.age =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$a),mean)[[2]]
 )
-print(
+tempsim$pvals[['a']] =
   sapply(seq_along(actual.age[[1]]),function(i)
     sum(ytilde.age[i,]>actual.age[i,2])/ncol(ytilde)
   )
-)
-sink()
+
 
 
 predy.age = apply(ytilde.age,1,function(x)
@@ -662,3 +700,12 @@ window.summary =  win %>% dplyr::select(a,p,c) %>%
 print(t(window.summary))
 load(paste0(datdir,'sim2_tbeta.RData'))
 print(t.beta)
+
+tempsim$tbeta = t.beta
+tempsim$preds = preds
+tempsim$r2 = summary(r2)
+tempsim$bic = summary(bics)
+
+#save summary of simulation data
+simres[[simnum]] = tempsim
+save(simres,file=srf)

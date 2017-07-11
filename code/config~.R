@@ -4,6 +4,8 @@
 #preliminaries
 library(dplyr); library(ggplot2)
 
+set.seed(403)
+
 #@@
 #functions
 source('H:/projects/apc/code/apcfuns.R')
