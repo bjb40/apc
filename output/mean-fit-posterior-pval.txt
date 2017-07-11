@@ -1,6 +1,6 @@
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
--34.304   0.879   9.473   9.312  18.008  51.189 
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
--94.992  -4.457   9.444   9.358  23.272 122.292 
+-64.694 -21.401 -13.817 -15.065  -7.069  17.732 
+     Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+-143.0967  -29.1884  -14.6453  -15.0468   -0.4838  107.5090 
 [1] "omnibus bayesian p-value of mean"
-[1] 0.39
+[1] 0.47

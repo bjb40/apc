@@ -18,6 +18,7 @@ if(!file.exists(srf)){
   simnum = length(simres)+1
 }
 
+#incomplete list... others self-explanatory
 tempsim = list(tbeta = NULL, #true beta
                r2 = NULL, #summary of r2 values
                bic = NULL, #summar of BIC values
@@ -93,7 +94,7 @@ window.sample=function(var,alph,nwins){
 }
 
 #set of numbers of random samples
-n.samples=5
+n.samples=200
 
 ##you are using the wrong test --- for MC3, should be bic approx to bayes factor
 #see raferty
@@ -426,6 +427,7 @@ use.wt='rmsewt'
 tempsim$wt = use.wt
 tempsim$samp = n.samples
 tempsim$acc = acc/n.samples
+tempsim$bound = bound/n.samples
 
 for(mod in seq_along(effects)){
   effects[[mod]]$w=win[,use.wt][mod]

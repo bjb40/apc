@@ -335,3 +335,8 @@ stick_draw = function(num.vals, alpha) {
   weights
 }
 
+
+
+
+
+
