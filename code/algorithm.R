@@ -74,7 +74,7 @@ window.sample=function(var,alph,nwins){
 }
 
 #set of numbers of random samples
-n.samples=25
+n.samples=100
 
 ##you are using the wrong test --- for MC3, should be bic approx to bayes factor
 #see raferty
@@ -107,15 +107,15 @@ for(s in 2:n.samples){
   x=tdat[,c('a','p','c')]
   
   #draw from proposal distributions
-  #all.nwins = lapply(all.nwins, function(x)
-  #                        append(x,x[s-1]+rnorm(1,mean=0,sd=2)))
+  all.nwins = lapply(all.nwins, function(x)
+                          append(x,x[s-1]+rnorm(1,mean=0,sd=1)))
   all.nwins = lapply(list(a='a',p='p',c='c'),function(x)
     append(all.nwins[[x]],runif(1,1,length(unique(tdat[,paste(x)]))))
     )
 
   
   all.alphas= lapply(all.alphas, function(x)
-                    rbind(x,x[s-1,]+rnorm(nrow(x),mean=0,sd=0.1)))
+                    rbind(x,x[s-1,]+rnorm(nrow(x),mean=0,sd=0.05)))
 
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
 
@@ -176,7 +176,8 @@ if(s%%10==0){
   '\t',
   unlist(lapply(all.alphas,function(x) round(max(unlist(x[s,])),4))),
   
-        '\nacceptance rate:',(acc/n.samples),
+        '\nacceptance rate:',(acc/s),
+        '\nboundary rate:', (bound/s),
         '\nAverage model time:',avtm,
         '\n\n')
 }            
@@ -394,8 +395,8 @@ win$msewt=1/win$mse/sum(1/win$mse)
 win$modnum=1:nrow(win)
 
 #select weight
-use.wt='rmsewt'
-#use.wt='wt'
+#use.wt='rmsewt'
+use.wt='wt'
 
 for(mod in seq_along(effects)){
   effects[[mod]]$w=win[,use.wt][mod]
