@@ -2,43 +2,32 @@
 
 source('config~.R')
 
+#can pass these to ... parallel chains, maybe
+load(paste0(datdir,'nsim.RData'))
+tdat$c=tdat$p-tdat$a
+dv='y1'
+actual='s1'
+#y=tdat[,dv]
+
+#begin chain fuction
+draw_chains = function(...){
+
+source('config~.R')
+
 #prelim
 dv='y1'
 actual='s1'
 
-#generate sims data if it doesn't exist
-#place summary, including pvalues, summary stats, estimates, and true beta...
-srf = paste0(outdir,'simres.RData')
-if(!file.exists(srf)){
-  simres = list()
-  save(simres,file=srf)
-  simnum = 1
-} else{
-  load(srf)
-  simnum = length(simres)+1
-}
-
-#incomplete list... others self-explanatory
-tempsim = list(tbeta = NULL, #true beta
-               r2 = NULL, #summary of r2 values
-               bic = NULL, #summar of BIC values
-               pvals = NULL, #list of bayesian p-values --- omnibus + sliced
-               wt = NULL, #weighting scheme
-               preds = NULL, #mean and best estimates w/actual and overlap (actual can be adj)
-               ppdsum = NULL, #summary of ppd 
-               datsum = NULL #summary of data
-)
-
 #load test data
 #load(paste0(datdir,'testdat.RData')) #this is luo
 load(paste0(datdir,'nsim.RData'))
+tdat$c=tdat$p-tdat$a
 
 #@@@@@@@@@@@
 #sampling from model subspace
 #@@@@@@@@@@@
 
 y=tdat[,dv]
-tdat$c=tdat$p-tdat$a
 maxc= max(tdat$c)
 minc = min(tdat$c)
 
@@ -94,7 +83,7 @@ window.sample=function(var,alph,nwins){
 }
 
 #set of numbers of random samples
-n.samples=200
+n.samples=5
 
 ##you are using the wrong test --- for MC3, should be bic approx to bayes factor
 #see raferty
@@ -185,7 +174,8 @@ for(s in 2:n.samples){
   breaks$a[[s]]=attr(x$a,'breaks')
   breaks$p[[s]]=attr(x$p,'breaks')
   breaks$c[[s]]=attr(x$c,'breaks')
-  
+
+"  
 if(s%%10==0){
       cat('\n\nEstimating model',length(allmods),
             'with windows:',
@@ -206,7 +196,8 @@ if(s%%10==0){
         '\nboundary rate:', (bound/s),
         '\nAverage model time:',avtm,
         '\n\n')
-}            
+}
+"
       #add esitmate / lin_gibbs is bayesian gibbs sampler
       mnum = length(allmods)+1
       
@@ -269,11 +260,6 @@ if(s%%10==0){
       
       effects[[mnum]]$bic=m$bic
       
-      #yhat
-      #ppd[[mnum]] = xhat %*% t(as.matrix(allmods[[mnum]]$betas))
-      #ytilde
-      #ppd[[mnum]] = 
-      
         avtm=(avtm*(length(allmods)-1)+Sys.time()-tm)/length(allmods)
         tm=Sys.time()
       
@@ -302,8 +288,6 @@ if(s%%10==0){
         
 }#end sampling loop
 
-#get rid of burnin
-#burnin=round(n.samples/2)
 
 allmods = allmods[2:length(allmods)]
 effects = effects[2:length(effects)]
@@ -311,9 +295,54 @@ xhats = xhats[2:length(xhats)]
 breaks = lapply(breaks, function(x)
   x[2:length(x)])
 
-#win=win %>% 
-#  filter(modnum>=burnin) %>%
-#  mutate(modnum=1:length(allmods))
+
+res = list(
+  allmods=allmods,
+  effects=effects,
+  xhats=xhats,
+  breaks=breaks,
+  win=win,
+  n.samples=n.samples,
+  acc=acc,
+  bound=bound
+)
+
+return(list(res))
+
+}
+
+library(parallel)
+
+#draw 4 chains
+
+print('Begin drawing chains...')
+
+cl <- makeCluster(mc <- getOption("cl.cores", 4))
+chains=do.call(c,parLapply(cl=cl,1:4,draw_chains))
+
+#end cluster
+stopCluster(cl)
+
+#combine chains --- can calculate R-hats here...
+extract = function(l,name,as.df=FALSE){
+  #extracts and combines name object from list 'l'
+  res=do.call(c,lapply(l,function(x) x[[name]]))
+  if(as.df){
+    res=do.call(rbind,lapply(l,function(x) x[[name]]))
+  }
+  
+  return(res)
+}
+
+allmods = extract(chains,'allmods')
+effects = extract(chains,'effects')
+xhats = extract(chains,'xhats')
+breaks = extract(chains,'breaks')
+win = extract(chains,'win',as.df=TRUE)
+n.samples = sum(unlist(extract(chains,'n.samples')))
+acc = sum(unlist(extract(chains,'acc')))
+bound = sum(unlist(extract(chains,'bound')))
+rm(chains)
 
 ##post-processing --- best model
 bics=unlist(lapply(allmods,FUN=function(x) x$bic))
@@ -363,32 +392,9 @@ for(d in c('a','p','c')){
   preds[[d]]$id=unique(tdat[,d])[order(pltdat[[d]]$id)]
   #preds[[d]]=preds[[d]] %>% arrange(id)
   
-  #need to change axes and limits...actually better to melt into df 
-  #and not to use grid.arrange... (same for below)
-  calcplt=ggplot(preds[[d]],aes(x=id,y=est))+ 
-    geom_point() + 
-    geom_errorbar(aes(ymax=up,ymin=down)) + 
-    geom_line(aes(y=actual)) + theme_classic()
-
-  #print(calcplt)
-  #Sys.sleep(2)
-  
-  best.plt[[d]]=calcplt
   
 }
 
-pdf(file=paste0(imdir,'best-fit.pdf'))
-
-  pltrange=range(unlist(
-    lapply(preds,function(x) range(x %>% dplyr::select(-id)))
-  ))
-  
-  grid.arrange(best.plt[['a']] + ylim(pltrange),
-              best.plt[['p']] + ylim(pltrange),
-              best.plt[['c']] + ylim(pltrange),
-              ncol=3)
-
-dev.off()
 
 ##post-processing -- model averaging
 #averaging algorithm from ... eq 35 from Rafferty SMR
@@ -421,8 +427,31 @@ win$msewt=1/win$mse/sum(1/win$mse)
 win$modnum=1:nrow(win)
 
 #select weight
-use.wt='rmsewt'
-#use.wt='wt'
+#use.wt='rmsewt'
+use.wt='wt'
+
+#generate sims data if it doesn't exist
+#place summary, including pvalues, summary stats, estimates, and true beta...
+srf = paste0(outdir,'simres.RData')
+if(!file.exists(srf)){
+  simres = list()
+  save(simres,file=srf)
+  simnum = 1
+} else{
+  load(srf)
+  simnum = length(simres)+1
+}
+
+#incomplete list... others self-explanatory
+tempsim = list(tbeta = NULL, #true beta
+               r2 = NULL, #summary of r2 values
+               bic = NULL, #summar of BIC values
+               pvals = NULL, #list of bayesian p-values --- omnibus + sliced
+               wt = NULL, #weighting scheme
+               preds = NULL, #mean and best estimates w/actual and overlap (actual can be adj)
+               ppdsum = NULL, #summary of ppd 
+               datsum = NULL #summary of data
+)
 
 tempsim$wt = use.wt
 tempsim$samp = n.samples
@@ -497,60 +526,48 @@ preds[[d]]$m_up=rowSums(
   )
 )
 
-#preds$cohort=1:nrow(preds)
-#predsm=preds[,! colnames(preds) %in% c('up','down')]
-#pp=melt(predsm,id='cohort')
-
-pltrange=range(unlist(
-  lapply(preds,function(x) range(x %>% dplyr::select(-id)))
-))
-
-mean.plt[[d]]=ggplot(preds[[d]],
-         aes_string(y='m_est',x='id')) + 
-         geom_point() + 
-         geom_errorbar(aes(ymax=m_up,ymin=m_down))  +
-         geom_line(aes(y=actual)) + theme_minimal()
 
        
 }
 
-pdf(file=paste0(imdir,'mean-fit.pdf'))
+#now = Sys.time()
 
-  grid.arrange(mean.plt[['a']] + ylim(pltrange),
-               mean.plt[['p']] + ylim(pltrange),
-               mean.plt[['c']] + ylim(pltrange),
-               ncol=3)
+cl <- makeCluster(mc <- getOption("cl.cores", 4))
+clusterExport(cl=cl, varlist=c("win", "tdat","allmods",'use.wt'))
 
-dev.off()
-
-
-##posterior for mean effects
-
+draw_post=function(...){
 #draw list for posterior sample
-#post.size=10000
-post.size=1000
-ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
-post.mods = base::sample(win$modnum,size=post.size,
-                   replace=TRUE,prob=win$rmsewt)
-
-#drawing posterior samples (with replacement)
-
-for(i in seq_along(post.mods)){
-  i.win=win[post.mods[i],]
-  modnum=i.win$modnum
-
-  ytilde[,i] = allmods[[modnum]]$yhat + 
-    rnorm(nrow(ytilde),mean=0,sd=allmods[[modnum]]$sigma)
+  post.size=250
   
-  #ytilde[,i] = xhat %*% b + rnorm(nrow(xhat),mean=0,sd=s2)
+  ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
+  post.mods = base::sample(win$modnum,size=post.size,
+                   replace=TRUE,prob=win[,use.wt])
   
-  if(i%%100==0){
-    cat(i, 'of', length(post.mods),'\n')
+  #drawing posterior samples (with replacement)
+  for(i in seq_along(post.mods)){
+    i.win=win[post.mods[i],]
+    modnum=i.win$modnum
+  
+    ytilde[,i] = allmods[[modnum]]$yhat + 
+      rnorm(nrow(ytilde),mean=0,sd=allmods[[modnum]]$sigma)
   }
   
+  return(list(ytilde))
 }
 
+print('Begin drawing posterior samples...')
 
+post_chains=do.call(c,parLapply(cl=cl,1:4,draw_post))
+
+#end cluster
+stopCluster(cl)
+
+#print(Sys.time()-now)
+
+ytilde = do.call(cbind,post_chains)
+rm(post_chains)
+
+print('Finalize post-processing, and output results.')
 
 sink(paste0(outdir,'mean-fit-posterior-pval.txt'),type=c('output','message'))
 
@@ -611,8 +628,6 @@ tempsim$pvals[['a']] =
     sum(ytilde.age[i,]>actual.age[i,2])/ncol(ytilde)
   )
 
-
-
 predy.age = apply(ytilde.age,1,function(x)
   c(mean=mean(x),up=quantile(x,0.975),low=quantile(x,0.025)))
 predy.age = as.data.frame(t(predy.age))
@@ -630,21 +645,21 @@ predy.cohort$c = c(1:nrow(predy.cohort)); colnames(predy.cohort) = c('mean','up'
 
 
 preda = ggplot(predy.age,aes(x=a,y=mean)) + 
-  geom_boxplot(data=tdat, aes(x=a,y=y,group=a),alpha=.05) +
+  geom_boxplot(data=tdat, aes(x=a,y=tdat[,dv],group=a),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
 #Sys.sleep(5)
 
 predp = ggplot(predy.period,aes(x=p,y=mean)) + 
-  geom_boxplot(data=tdat, aes(x=p,y=y,group=p),alpha=.05) +
+  geom_boxplot(data=tdat, aes(x=p,y=tdat[,dv],group=p),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
 #Sys.sleep(5)
   
 predc = ggplot(predy.cohort,aes(x=c,y=mean)) + 
-  geom_boxplot(data=tdat, aes(x=c+20,y=y,group=c),alpha=.05) +
+  geom_boxplot(data=tdat, aes(x=c+20,y=tdat[,dv],group=c),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
@@ -656,52 +671,6 @@ grid.arrange(preda + theme_minimal(),
              nrow=3)
 
 dev.off()
-
-
-#predict = ggplot(ytilde.age, aes())
-
-#should do this dynamicall...
-yl=range(c(actual.age$x,
-             actual.period$x,
-             actual.cohort$x))
-
-pdf(paste0(imdir,'mean-fit-post.pdf')) #--conditional??
-  par(mfrow=c(1,3))
-  plot(actual.age,type='l',ylim=yl);
-    lines(actual.age[[1]],apply(ytilde.age,1,mean),type='p')
-  plot(actual.period,type='l',ylim=yl); 
-    lines(actual.period[[1]],apply(ytilde.period,1,mean),type='p')
-  plot(actual.cohort,type='l',ylim=yl); 
-    lines(actual.cohort[[1]],apply(ytilde.cohort,1,mean),type='p')
-dev.off()
-
-####
-#testing of final model
-
-fin.bayes=allmods[[length(allmods)]]
-fin.freq = lm(tdat[,dv]~model.matrix(~.,x))
-
-print(summary(fin.freq)$r.squared)
-print(mean(fin.bayes$r2))
-
-print(logLik(fin.freq))
-print(mean(fin.bayes$ll))
-
-print(
-  sum(dnorm(y,mean=predict(fin.freq),sd=mean(fin.bayes$sigma),log=TRUE))
-)
-
-window.summary =  win %>% dplyr::select(a,p,c) %>%
-    summarize_all(funs(
-      m.wn=mean(.),
-      rmse.win=weighted.mean(.,w=win$rmsewt),
-      bic.win=weighted.mean(.,w=win$wt),
-      bic_prime.win=weighted.mean(.,w=win$w_prime))
-      ) 
-
-print(t(window.summary))
-load(paste0(datdir,'sim2_tbeta.RData'))
-print(t.beta)
 
 tempsim$tbeta = t.beta
 tempsim$preds = preds
