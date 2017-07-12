@@ -28,8 +28,9 @@ library(reshape2)
 pvals=extract('pvals',as.df=FALSE,unlist=FALSE)
 hist(unlist(pvals))
 
-opv = do.call(c,lapply(pvals, function(l) l$omnibus))
+opv = do.call(base::c,lapply(pvals, function(l) l$omnibus))
 besto = which(abs(opv-.5) == min(abs(opv-.5)))
+worsto = which(abs(opv-.5) == max(abs(opv-.5)))
 
 rpv = do.call(rbind,lapply(pvals, function(l) range(l)))
 rpv = cbind(rpv,rpv[,2]-rpv[,1]); colnames(rpv) = c('min.pval','max.pval','range.pval')
@@ -42,7 +43,7 @@ avp=unlist(lapply(pvals,function(s) mean(unlist(s))))
 best=which((abs(avp-0.5))==min(abs(avp-0.5)))
 worst=which((abs(avp-0.5))==max(abs(avp-0.5)))
 
-pv = melt(do.call(rbind,lapply(simres, function(s) s$pvals$a)))
+pv = melt(do.call(rbind,lapply(simres, function(s) s$pvals$c)))
 #box plot of p-values
 hg = ggplot(pv,aes(x=factor(Var2),y=value)) + 
   geom_boxplot() +
@@ -54,6 +55,17 @@ print(hg)
 
 ###########
 
+
+recenter=function(df){
+  mn = df %>%
+    summarize_all(mean)
+
+  tst = as.data.frame(sweep(as.matrix(df),2,as.matrix(mn),FUN='-'))
+  tst$id=tst$id + mn$id
+  
+  return(tst)
+}
+"
 recenter=function(df){
   int = df$id == min(df$id)
   df$est = df$est - df$est[int]
@@ -66,20 +78,20 @@ recenter=function(df){
   
   return(df)
 }
+"
 
-
-plt_fit = function(simnum){
+plt_fit = function(simnum,recenter=FALSE){
   #input simulaiton number; output is graph of effects
 pred = simres[[simnum]]$preds
-#pred=lapply(pred,recenter)
+if(recenter){pred=lapply(pred,recenter)} #need fixed b/c first is not always continuous
 df=do.call(rbind,pred)
 df$type=substr(rownames(df),1,1)
 
 plt=ggplot(df,aes(x=id,y=actual)) +
-  geom_line(lty=2) + 
+  geom_line(lty=1) + 
   geom_point(aes(y=est)) +
-  geom_ribbon(aes(ymin=down,ymax=up),alpha=0.25) +
-  geom_point(aes(y=m_est),shape=1) +
+  geom_errorbar(aes(ymin=down,ymax=up)) +
+  geom_line(aes(y=m_est),lty=2) +
   geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25) +
   facet_grid(.~type,scales='free_x') +
   theme_classic()
@@ -94,5 +106,5 @@ print(plt_fit(13)) #yuck --- print(plt_fit(12)) // has good omnibus pval --12 ha
 print(plt_fit(14)) ##14 and 15 look good! --- i wonder if rhat would help that... 
 #23 has great example of best fit versus average!!!...
 
-
-  
+print(plt_fit(worsto,recenter=TRUE))
+print(plt_fit(besto)) #best omnibus
