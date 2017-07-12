@@ -351,17 +351,6 @@ r2=unlist(lapply(allmods,FUN=function(x) mean(x$r2)))
 
 best=which(bics_prime==min(bics_prime))
 
-print(
-  t(
-    apply(allmods[[best]]$betas,2,FUN=function(x) c(eff=mean(x),sd=sd(x)))
-  )
-)
-
-print(mean(allmods[[best]]$r2))
-
-#cohort plots
-#NOTE that the zero  may be a messed up order in the name!!
-
 library(ggplot2)
 library(gridExtra)
 
@@ -370,7 +359,6 @@ load(paste0(datdir,'nsim_fits.RData'))
 
 best.plt = list()
 preds = list()
-
 
 #for(d in c('a','p','c')){
 for(d in c('a','p','c')){
@@ -567,7 +555,7 @@ stopCluster(cl)
 ytilde = do.call(cbind,post_chains)
 rm(post_chains)
 
-print('Finalize post-processing, and output results.')
+print('Finalize post-processing, and output results...')
 
 sink(paste0(outdir,'mean-fit-posterior-pval.txt'),type=c('output','message'))
 

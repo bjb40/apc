@@ -63,8 +63,8 @@ plt=ggplot(df,aes(x=id,y=actual)) +
   geom_line(lty=2) + 
   geom_point(aes(y=est)) +
   geom_ribbon(aes(ymin=down,ymax=up),alpha=0.25) +
-  #geom_point(aes(y=m_est),shape=2) +
-  #geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25) +
+  geom_point(aes(y=m_est),shape=2) +
+  geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25) +
   facet_grid(.~type,scales='free_x') +
   theme_classic()
 
