@@ -55,7 +55,8 @@ print(hg)
 
 ###########
 
-
+#have to fix recenter.... b/c the error bars shouldn't change by avg, but relative to
+#the mean... would be better if I had a diff.....
 recenter=function(df){
   mn = df %>%
     summarize_all(mean)
@@ -107,4 +108,4 @@ print(plt_fit(14)) ##14 and 15 look good! --- i wonder if rhat would help that..
 #23 has great example of best fit versus average!!!...
 
 print(plt_fit(worsto,recenter=TRUE))
-print(plt_fit(besto)) #best omnibus
+print(plt_fit(besto,recenter=TRUE)) #best omnibus
