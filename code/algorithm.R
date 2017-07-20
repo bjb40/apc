@@ -58,7 +58,7 @@ window.sample=function(var,alph,nwins){
 
   dp=rdirichlet(1,alph)
   #segment the stick
-  segments=floor(cumsum(dp*nwins))
+  segments=round(cumsum(dp*nwins))
   #identify changes in segments
   sb=segments
   for(i in seq_along(segments)){
