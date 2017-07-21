@@ -14,7 +14,7 @@ len=10
 
 alphs.e = rep(1*m,len)
 #alphs = runif(len)*alphs.e
-alphs = runif(len,0,10)
+alphs = c(1,1,1,runif((len-3),0,20))
 n.w = len
 
 dr2 = rdirichlet(10000,alphs); 

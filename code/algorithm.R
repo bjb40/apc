@@ -46,7 +46,7 @@ effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
 
-window.sample=function(var,alph,nwins){
+window.sample=function(var,alph){
   #input is continuous of a,p,c
   #alpha is a vector the length of unique entries in var that is fed to dirichelet
   #output is factor with uniform, random window constraints
@@ -58,7 +58,7 @@ window.sample=function(var,alph,nwins){
 
   dp=rdirichlet(1,alph)
   #segment the stick
-  segments=round(cumsum(dp*nwins))
+  segments=round(cumsum(dp*len))
   #identify changes in segments
   sb=segments
   for(i in seq_along(segments)){
@@ -83,7 +83,7 @@ window.sample=function(var,alph,nwins){
 }
 
 #set of numbers of random samples
-n.samples=5
+n.samples=100
 
 ##you are using the wrong test --- for MC3, should be bic approx to bayes factor
 #see raferty
@@ -95,14 +95,16 @@ win = data.frame(a=numeric(), p=numeric(), c=numeric())
 breaks=list(a=list(),p=list(),c=list())
 
 d = c('a','p','c')
+dl = c(length(unique(tdat$a)),length(unique(tdat$p)),length(unique(tdat$c)))
+names(dl) = d
 
 #set starting values
-all.alphas = lapply(d,function(x) data.frame(t(rep(1,length(unique(tdat[,x]))))))
+all.alphas = lapply(d,function(x) data.frame(t(rep(dl[x],length(unique(tdat[,x]))))))
 #all.nwins = lapply(d,function(x) 3)
 #all.nwins = lapply(d,function(x) length(unique(tdat[,x]))/2)
-all.nwins = lapply(d,function(x) length(unique(tdat[,x]))-1)
+#all.nwins = lapply(d,function(x) length(unique(tdat[,x]))-1)
 
-names(all.alphas) = names(all.nwins) = d
+names(all.alphas) = d #names(all.nwins) = d
 
 #accept rate
 acc=0
@@ -118,30 +120,32 @@ for(s in 2:n.samples){
   #draw from proposal distributions
   #all.nwins = lapply(all.nwins, function(x)
   #                        append(x,x[s-1]+rnorm(1,mean=0,sd=1)))
-  all.nwins = lapply(list(a='a',p='p',c='c'),function(x)
-    append(all.nwins[[x]],runif(1,2,length(unique(tdat[,paste(x)]))))
-    )
+  #all.nwins = lapply(list(a='a',p='p',c='c'),function(x)
+  #  append(all.nwins[[x]],runif(1,2,length(unique(tdat[,paste(x)]))))
+  #  )
 
   
   all.alphas= lapply(all.alphas, function(x)
-                    rbind(x,x[s-1,]+rnorm(ncol(x),mean=0,sd=0.05)))
+                    rbind(x,x[s-1,]+rnorm(ncol(x),mean=0,sd=1)))
   
   #all.alphas= lapply(all.alphas, function(x)
   #  rbind(x,runif(ncol(x),0,10)))
 
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
 
-  if(any(unlist(all.alphas)<0 | any(unlist(all.nwins)<2))){
+  #if(any(unlist(all.alphas)<0 | any(unlist(all.nwins)<2))){
+  if(any(unlist(all.alphas)<0)){
+      
     bound=bound+1
     out.al=sum(unlist(all.alphas)<0)
-    out.wi=sum(unlist(all.nwins)<2)
-    print(c(out.al,out.wi))
+    #out.wi=sum(unlist(all.nwins)<2)
+    #print(c(out.al,out.wi))
     #s=s-1
     #mnum=mnum-1 #should consolidate these
     cat('\n\nOut-of-Sample-Space Warning.\n\n')
     #acc=acc-1
     for(d in seq_along(all.alphas)){
-      all.nwins[[d]][s]=all.nwins[[d]][s-1]
+      #all.nwins[[d]][s]=all.nwins[[d]][s-1]
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
      #note that this samples different windows with same hyper param
     }
@@ -149,9 +153,9 @@ for(s in 2:n.samples){
   }
   
   #draw random window samples
-  x$a=window.sample(x$a,all.alphas$a[s,],all.nwins$a[s]) 
-  x$p=window.sample(x$p,all.alphas$p[s,],all.nwins$p[s]) 
-  x$c=window.sample(x$c,all.alphas$c[s,],all.nwins$c[s]) 
+  x$a=window.sample(x$a,all.alphas$a[s,]) 
+  x$p=window.sample(x$p,all.alphas$p[s,]) 
+  x$c=window.sample(x$c,all.alphas$c[s,]) 
   
   #skip if unideintified
   la = length(levels(x$a)) == length(unique(tdat$a))
@@ -159,7 +163,7 @@ for(s in 2:n.samples){
   lc = length(levels(x$c)) == length(unique(tdat$c))
   if(all(la,lp,lc)){
     for(d in seq_along(all.alphas)){
-      all.nwins[[d]][s]=all.nwins[[d]][s-1]
+      #all.nwins[[d]][s]=all.nwins[[d]][s-1]
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
     }
   }
@@ -278,7 +282,7 @@ if(s%%10==0){
         } else {
           
           for(d in seq_along(all.alphas)){
-            all.nwins[[d]][s]=all.nwins[[d]][s-1]
+            #all.nwins[[d]][s]=all.nwins[[d]][s-1]
             all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
           }
 
@@ -302,7 +306,7 @@ res = list(
   xhats=xhats,
   breaks=breaks,
   win=win,
-  n.samples=n.samples,
+  n.samples=125,
   acc=acc,
   bound=bound
 )
@@ -318,7 +322,7 @@ library(parallel)
 print('Begin drawing chains...')
 
 cl <- makeCluster(mc <- getOption("cl.cores", 4))
-chains=do.call(c,parLapply(cl=cl,1:4,draw_chains))
+chains=do.call(base::c,parLapply(cl=cl,1:4,draw_chains))
 
 #end cluster
 stopCluster(cl)
@@ -326,7 +330,7 @@ stopCluster(cl)
 #combine chains --- can calculate R-hats here...
 extract = function(l,name,as.df=FALSE){
   #extracts and combines name object from list 'l'
-  res=do.call(c,lapply(l,function(x) x[[name]]))
+  res=do.call(base::c,lapply(l,function(x) x[[name]]))
   if(as.df){
     res=do.call(rbind,lapply(l,function(x) x[[name]]))
   }
@@ -545,7 +549,7 @@ draw_post=function(...){
 
 print('Begin drawing posterior samples...')
 
-post_chains=do.call(c,parLapply(cl=cl,1:4,draw_post))
+post_chains=do.call(base::c,parLapply(cl=cl,1:4,draw_post))
 
 #end cluster
 stopCluster(cl)
