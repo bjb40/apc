@@ -103,9 +103,10 @@ return(plt)
 #print(plt_fit(5))
 
 #print(plt_fit(worst)); print(plt_fit(12)); print(plt_fit(13)); 
-print(plt_fit(13)) #yuck --- print(plt_fit(12)) // has good omnibus pval --12 has bad!!
-print(plt_fit(14)) ##14 and 15 look good! --- i wonder if rhat would help that... 
+#print(plt_fit(13)) #yuck --- print(plt_fit(12)) // has good omnibus pval --12 has bad!!
+#print(plt_fit(14)) ##14 and 15 look good! --- i wonder if rhat would help that... 
 #23 has great example of best fit versus average!!!...
 
-print(plt_fit(worsto,recenter=TRUE))
-print(plt_fit(besto,recenter=TRUE)) #best omnibus
+print(plt_fit(bestr))
+print(plt_fit(worsto))
+print(plt_fit(besto)) #best omnibus

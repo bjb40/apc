@@ -151,12 +151,7 @@ for(s in 2:n.samples){
     }
 
   }
-  
-  #draw random window samples
-  x$a=window.sample(x$a,all.alphas$a[s,]) 
-  x$p=window.sample(x$p,all.alphas$p[s,]) 
-  x$c=window.sample(x$c,all.alphas$c[s,]) 
-  
+
   #skip if unideintified
   la = length(levels(x$a)) == length(unique(tdat$a))
   lp = length(levels(x$p)) == length(unique(tdat$p))
@@ -167,6 +162,13 @@ for(s in 2:n.samples){
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
     }
   }
+  
+    
+  #draw random window samples
+  x$a=window.sample(x$a,all.alphas$a[s,]) 
+  x$p=window.sample(x$p,all.alphas$p[s,]) 
+  x$c=window.sample(x$c,all.alphas$c[s,]) 
+  
   
   #collect model data
   nr=data.frame(a=length(levels(x$a)),
@@ -306,7 +308,7 @@ res = list(
   xhats=xhats,
   breaks=breaks,
   win=win,
-  n.samples=125,
+  n.samples=250,
   acc=acc,
   bound=bound
 )

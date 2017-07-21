@@ -8,13 +8,13 @@ colnames(draw)=c('a','p','c')
 plt=ggplot(draw,aes(x=a,y=p,color=c)) + geom_point()
 print(plt)
 
-m=10
+m=39
 
-len=10
+len=m
 
 alphs.e = rep(1*m,len)
 #alphs = runif(len)*alphs.e
-alphs = c(1,1,1,runif((len-3),0,20))
+alphs = c(1,1,1,runif((len-3),0,(len+10)))
 n.w = len
 
 dr2 = rdirichlet(10000,alphs); 
