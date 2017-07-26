@@ -43,7 +43,7 @@ avp=unlist(lapply(pvals,function(s) mean(unlist(s))))
 best=which((abs(avp-0.5))==min(abs(avp-0.5)))
 worst=which((abs(avp-0.5))==max(abs(avp-0.5)))
 
-pv = melt(do.call(rbind,lapply(simres, function(s) s$pvals$c)))
+pv = melt(do.call(rbind,lapply(simres, function(s) s$pvals$p)))
 #box plot of p-values
 hg = ggplot(pv,aes(x=factor(Var2),y=value)) + 
   geom_boxplot() +
@@ -90,12 +90,14 @@ df$type=substr(rownames(df),1,1)
 
 plt=ggplot(df,aes(x=id,y=actual)) +
   geom_line(lty=1) + 
-  geom_point(aes(y=est)) +
-  geom_errorbar(aes(ymin=down,ymax=up)) +
+  geom_point(aes(y=est), alpha=0.25) +
+  geom_errorbar(aes(ymin=down,ymax=up), alpha=0.5) +
   geom_line(aes(y=m_est),lty=2) +
   geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25) +
   facet_grid(.~type,scales='free_x') +
-  theme_classic()
+  theme_minimal() +
+  ylab('Effect') +
+  xlab('APC Value')
 
 return(plt)
 }
@@ -105,8 +107,8 @@ return(plt)
 #print(plt_fit(worst)); print(plt_fit(12)); print(plt_fit(13)); 
 #print(plt_fit(13)) #yuck --- print(plt_fit(12)) // has good omnibus pval --12 has bad!!
 #print(plt_fit(14)) ##14 and 15 look good! --- i wonder if rhat would help that... 
-#23 has great example of best fit versus average!!!...
+#21 & 15 has great example of best fit versus average!!!...
 
-print(plt_fit(bestr))
+print(plt_fit(21))
 print(plt_fit(worsto))
 print(plt_fit(besto)) #best omnibus

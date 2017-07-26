@@ -111,7 +111,7 @@ acc=0
 #count boundary conditions rejections
 bound=0
 
-#mc3 sampler (prior model probabilities are equal)
+#mcmc sampler (prior model probabilities are equal)
 for(s in 2:n.samples){
 
   #reset dataframe
@@ -308,7 +308,7 @@ res = list(
   xhats=xhats,
   breaks=breaks,
   win=win,
-  n.samples=250,
+  n.samples=n.samples,
   acc=acc,
   bound=bound
 )
