@@ -63,24 +63,33 @@ if(!is.na(winlength)){
   
 }
 
-scopedummy=function(w){
+scopedummy=function(w,unique.vals=NULL){
   #this is a method for window object that transforms it
   #into a factor covering all possible continuous values
   #the (row) names are the values
   #i.e. 1,2,3,4,5,6 with two windows output two factors
   # 1,1,1,2,2,2
+  #it can supply unique values, otherwise, it presumes continuous
   
   UseMethod('scopedummy',w)
 
 }
 
-scopedummy.default = function(w) {
+scopedummy.default = function(w,unique.vals=NULL) {
   cat('\nError: Must use window object.\n\n')
 }
 
-scopedummy.window = function(w) {
+scopedummy.window = function(w,unique.vals=NULL) {
+  #w is a window object
+  #unique.vals is a vector of numbers that shows unique values, if null, then it
+  #presumes continuous
   r=attr(w,'range')
-  span=r[1]:r[2]
+  if(is.null(unique.vals)){
+    span=r[1]:r[2]
+  } else {
+    span=unique.vals
+  }
+  
   f=cut(span,breaks=attr(w,'breaks'))
   return(f)
 }
