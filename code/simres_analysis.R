@@ -88,16 +88,24 @@ if(recenter){pred=lapply(pred,recenter)} #need fixed b/c first is not always con
 df=do.call(rbind,pred)
 df$type=substr(rownames(df),1,1)
 
-plt=ggplot(df,aes(x=id,y=actual)) +
-  geom_line(lty=1) + 
-  geom_point(aes(y=est), alpha=0.25) +
-  geom_errorbar(aes(ymin=down,ymax=up), alpha=0.5) +
-  geom_line(aes(y=m_est),lty=2) +
+ls = c('1' = 'Actual', '2' = 'Estimated')
+
+df$lty1 = as.factor(ls[1])
+df$lty2 = as.factor(ls[2])
+
+plt=ggplot(df,aes(x=id,y=actual,linetype=lty1)) +
+  geom_line() +
+  #geom_point(aes(y=est), alpha=0.25) +
+  #geom_errorbar(aes(ymin=down,ymax=up), alpha=0.5) +
+  geom_line(aes(y=m_est,linetype=lty2)) +
   geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25) +
   facet_grid(.~type,scales='free_x') +
   theme_minimal() +
   ylab('Effect') +
-  xlab('APC Value')
+  xlab('APC Value')  +
+  labs(linetype='',
+       title='Simulated Model.',
+       caption='n=1,000\nAverage of 2,000 Different Block Models Sampled Using MCMC.')
 
 return(plt)
 }
@@ -111,4 +119,5 @@ return(plt)
 
 print(plt_fit(21))
 print(plt_fit(worsto))
-print(plt_fit(besto)) #best omnibus
+print(plt_fit(besto))
+ #best omnibus

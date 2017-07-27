@@ -2,13 +2,15 @@ source('config~.R')
 library(ggplot2)
 library(reshape2)
 
+set.seed(431)
+
 draw = data.frame(rdirichlet(1000,c(2,1,.5)))
 
 colnames(draw)=c('a','p','c')
 plt=ggplot(draw,aes(x=a,y=p,color=c)) + geom_point()
 print(plt)
 
-m=39
+m=8
 
 len=m
 
@@ -17,11 +19,11 @@ alphs.e = rep(1*m,len)
 alphs = c(1,1,1,runif((len-3),0,(len+10)))
 n.w = len
 
-dr2 = rdirichlet(10000,alphs); 
+dr2 = rdirichlet(1000,alphs); 
 dr2 = data.frame(t(apply(dr2,1,function(x) round(cumsum(x)*n.w))))
 colnames(dr2) = seq_along(alphs)
 #dr2$grp = 'Alpha is 0.2, 1, or 2'
-dr3 = rdirichlet(10000,alphs.e); 
+dr3 = rdirichlet(1000,alphs.e); 
 dr3 = data.frame(t(apply(dr3,1,function(x) round(cumsum(x)*n.w))))
 colnames(dr3) = seq_along(alphs)
 #dr3$grp = 'Alpha = 1'
@@ -52,9 +54,10 @@ cat('Window Breaks equal,unequal:', mean(dr3.row), mean(dr2.row))
 dr3=round(colMeans(dr2.b[,1:len]),2)
 dr2=round(colMeans(dr3.b[,1:len]),2)
 
+ue = paste0('\u03b1 =[', paste(round(alphs,1),collapse=','),']',sep='')
+
 dt = melt(rbind(dr2,dr3)) %>%
-  mutate(Var1=ifelse(Var1=='dr2','\u03b1 = [1,1,1,1,1,1,1,1,1,1]',
-                '\u03b1 = [0.2,1,2,0.2,1,2,1,1,3,1]'))
+  mutate(Var1=ifelse(Var1=='dr2','\u03b1 = [1,1,1,1,1,1,1,1,1,1]',ue))
 dt$Var2 = factor(dt$Var2)
 
 panel.plt = ggplot(dt, aes(y=value,x=Var2)) + 

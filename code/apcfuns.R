@@ -276,7 +276,7 @@ lin_gibbs = function(y,x){
   rmse=ll=r2=s2=matrix(1,iter)
   b= matrix(0,iter,ncol(x))
   yhat=matrix(0,length(y))
-  xtxi = solve(t(x)%*%x)
+  xtxi = solve(t(x)%*%x,tol=1e-22)
   m=lm(y~x-1)
   pars=coefficients(m)
   res=residuals(m)
