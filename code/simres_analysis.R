@@ -66,20 +66,7 @@ recenter=function(df){
   
   return(tst)
 }
-"
-recenter=function(df){
-  int = df$id == min(df$id)
-  df$est = df$est - df$est[int]
-  df$actual = df$actual - df$actual[int]
-  df$m_est = df$m_est - df$m_est[int]
-  df$up = df$up - df$up[int]
-  df$down=df$down-df$down[int]
-  df$m_down=df$m_down-df$m_down[int]
-  df$m_up = df$m_up-df$m_up[int]
-  
-  return(df)
-}
-"
+
 
 plt_fit = function(simnum,recenter=FALSE){
   #input simulaiton number; output is graph of effects
@@ -117,7 +104,30 @@ return(plt)
 #print(plt_fit(14)) ##14 and 15 look good! --- i wonder if rhat would help that... 
 #21 & 15 has great example of best fit versus average!!!...
 
-print(plt_fit(21))
+#print(plt_fit(21))
 print(plt_fit(worsto))
+ggsave(paste0(imdir,'worst_sim.pdf'))
 print(plt_fit(besto))
- #best omnibus
+ggsave(paste0(imdir,'best_sim.pdf'))
+
+######
+#table of overlaps...
+######
+
+
+ol.preds = function(preds){
+  #calculates overlap of preds --
+  #returns proportion of actual within 95% intervals
+  preds = do.call(rbind,preds)
+  ol = preds$m_up > preds$actual & preds$m_down < preds$actual
+  return(sum(ol)/length(ol))
+}
+
+ol = unlist(lapply(simres,function(x) ol.preds(x$preds)))
+
+opvd = abs(.5-opv)
+avpd = abs(.5-avp)
+
+
+
+

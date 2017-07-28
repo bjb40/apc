@@ -57,7 +57,7 @@ dr2=round(colMeans(dr3.b[,1:len]),2)
 ue = paste0('\u03b1 =[', paste(round(alphs,1),collapse=','),']',sep='')
 
 dt = melt(rbind(dr2,dr3)) %>%
-  mutate(Var1=ifelse(Var1=='dr2','\u03b1 = [1,1,1,1,1,1,1,1,1,1]',ue))
+  mutate(Var1=ifelse(Var1=='dr2','\u03b1 = [1,1,1,1,1,1,1,1]',ue))
 dt$Var2 = factor(dt$Var2)
 
 panel.plt = ggplot(dt, aes(y=value,x=Var2)) + 
