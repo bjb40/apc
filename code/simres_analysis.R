@@ -58,11 +58,30 @@ print(hg)
 #have to fix recenter.... b/c the error bars shouldn't change by avg, but relative to
 #the mean... would be better if I had a diff.....
 recenter=function(df){
+  
+  delts = df %>% 
+    mutate(up = up-est, 
+           down=down-est, 
+           m_down = m_down-m_est,
+           m_up = m_up-m_est) %>%
+    dplyr::select(up,down,m_up,m_down,id)
+  
+  rownames(delts) = rownames(df)
+  
   mn = df %>%
     summarize_all(mean)
 
-  tst = as.data.frame(sweep(as.matrix(df),2,as.matrix(mn),FUN='-'))
+  tst = as.data.frame(sweep(as.matrix(df),2,as.matrix(mn),FUN='-')) %>% 
+    dplyr::select(actual,est,m_est,id)
   tst$id=tst$id + mn$id
+
+  tst = merge(tst,delts,by='id')
+  
+  tst = tst %>% 
+    mutate(up=up+est,
+           down=down+est,
+           m_down=m_down+m_est,
+           m_up = m_up+m_est)
   
   return(tst)
 }
@@ -82,8 +101,8 @@ df$lty2 = as.factor(ls[2])
 
 plt=ggplot(df,aes(x=id,y=actual,linetype=lty1)) +
   geom_line() +
-  #geom_point(aes(y=est), alpha=0.25) +
-  #geom_errorbar(aes(ymin=down,ymax=up), alpha=0.5) +
+  geom_point(aes(y=est), alpha=0.25) +
+  geom_errorbar(aes(ymin=down,ymax=up), alpha=0.5) +
   geom_line(aes(y=m_est,linetype=lty2)) +
   geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25) +
   facet_grid(.~type,scales='free_x') +
@@ -115,19 +134,22 @@ ggsave(paste0(imdir,'best_sim.pdf'))
 ######
 
 
-ol.preds = function(preds){
+ol.preds = function(preds,recenter=FALSE){
   #calculates overlap of preds --
   #returns proportion of actual within 95% intervals
+  if(recenter){pred=lapply(preds,recenter)} #need fixed b/c first is not always continuous
   preds = do.call(rbind,preds)
   ol = preds$m_up > preds$actual & preds$m_down < preds$actual
   return(sum(ol)/length(ol))
 }
 
-ol = unlist(lapply(simres,function(x) ol.preds(x$preds)))
+ol.unadj = unlist(lapply(simres,function(x) ol.preds(x$preds)))
+ol.adj = unlist(lapply(simres,function(x) ol.preds(x$preds,recenter = TRUE)))
 
 opvd = abs(.5-opv)
 avpd = abs(.5-avp)
+rpvd = rpv[,'range.pval']
 
-
+cor(cbind(ol.adj,ol.unadj,opvd,avpd,rpvd))
 
 
