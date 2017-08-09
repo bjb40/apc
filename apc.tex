@@ -1,0 +1,441 @@
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+    \usepackage{xltxtra,xunicode}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Mapping=tex-text,Scale=MatchLowercase}
+  \newcommand{\euro}{€}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\usepackage{unicode-math}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\ifxetex
+  \usepackage[setpagesize=false, % page size defined by xetex
+              unicode=false, % unicode breaks when used with xetex
+              xetex]{hyperref}
+\else
+  \usepackage[unicode=true]{hyperref}
+\fi
+\usepackage[usenames,dvipsnames]{color}
+\hypersetup{breaklinks=true,
+            bookmarks=true,
+            pdfauthor={},
+            pdftitle={Approximating Age-Period-Cohort Estimates by Averaging Multiple Models with Varying Window Restrictions},
+            colorlinks=true,
+            citecolor=blue,
+            urlcolor=blue,
+            linkcolor=magenta,
+            pdfborder={0 0 0}}
+\urlstyle{same}  % don't use monospace font for urls
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+
+\title{Approximating Age-Period-Cohort Estimates by Averaging Multiple Models
+with Varying Window Restrictions}
+\author{true \and true}
+\date{}
+
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+\begin{document}
+\maketitle
+
+\section{Abstract}\label{abstract}
+
+Key words: Computational Sociology, Methods, Life Course, Bayesian,
+Culture
+
+\section{Introduction}\label{introduction}
+
+\section{Background}\label{background}
+
+Both classic and modern studies have proposed different effects across
+three social dimensions of time: age, period, and cohort (Ryder 1965).
+These dimensions of time operate on individuals in different ways as
+they flow through social space. Age effects are driven either by the
+common experiences associated with the biological process of aging
+(Jackson, Weale, and Weale 2003), or persistent age-structuring
+institutions, like high school or retirement (Leisering 2003; Moen
+2014). Period effects are responses of everyone to contemporaneous
+social experiences, like recessions or wars (Lam, Fan, and Moen 2014).
+Finally, cohort effects are socialization effects. They are broad-based
+historical events that stick to the populations experiencing them, even
+after the event has long since ended (Vaisey and Lizardo 2016). In
+contemporary research, cohorts are virtually always defined in terms of
+birth year.
+
+These three dimensions of time sit at the center of some recurrent
+debates. For example, cultural sociologists are divided over whether the
+main driver of culture is a period process (cultural fragmentation) or a
+cohort process (acquired dispositions) (Vaisey and Lizardo 2016).
+Clinical reasearchers and biodemographers are looking for biological
+age---indicators of biological deterioration---but argue about
+confounding from cohort changes (Jackson et al. 2003). And yet others
+are concerned about separating long-term and short-term impacts of
+important events, like the Great Recession (Burgard and Kalousova 2015).
+
+Unfortunately, it is not trivial to estimate the unique effects of age,
+period, and cohort to find evidence that may settle these questions and
+debates. The fundamental problem is one of statistical identification:
+these three dimensions are linearly dependent. Two of the dimensions
+define the third. If a researcher knows an individual's age, and the
+year of the survey, cohort is also defined. Because these variables are
+exactly colinear, they are not estimable using classic statistical
+techniques. A number of solutions have been proposed to address this
+conundrum, these include traditional methods like block/window
+constraints (Anon. 2005), and new methods, including statistical
+transformation (the ``intrinsic estimator''), and random effects models
+(Yang and Land 2013).
+
+The past several years have seen a resurgence in debates surrounding
+these issues (Bell and Jones 2017; Luo 2013; Luo and Hodges 2016).
+Perhaps the most common argument is that the ``constraints'',
+\emph{i.e.} assumptions used to break the APC identity, produce unknown
+biases into the models. In reality, this presents an extreme case of
+multicollinearity, a well-known, though difficult problem in statistical
+theory (Wooldridge 2009, at p.~95-98), with numerous cautions in applied
+texts that separating highly colinear effects is difficult (Camm 2016,
+at p.~328). From a Bayesian perspective, collinearity and
+multicollinearity significantly reduce the ability of the data to supply
+information to produce the estimates, potentially introducing
+sensitivity to the prior (Gelman 2014, at p.~305-306), including
+assumtpions of linearity. To put it another way, the critique of APC
+models in general, and window constraints in particular (Luo and Hodges
+2016), is that different sets of assumptions lead to different (and
+inconsistent) results. But, what if Instead of focusing on finding a
+\emph{best} fitting model, we use a simple nonlinear approach (block
+modelling), and hundreds of assumptions? BMA allows us to do just that:
+run hundreds of models with differeing assumptions, and then combine
+them, weighted by their fit with the data.
+
+\section{Bayesian Model Averaging}\label{bayesian-model-averaging}
+
+The theoretical backdrop of BMA applies to this curcumstance quite well.
+In principal, there is no one true (or best) model; instead estimates
+are conditional on models from the modeling space (\(\mathscr{M}\)), and
+have a posterior distribution, which is calculated as a weighted average
+of all models (Raftery 1995:144--45). It has been applied in diverse
+areas from weather forecasting to biology to social science (Fragoso and
+Neto 2015) . BMA operates under the simple fact that any particular
+estimate, including effect size and significance, have a posterior
+probability distribution which is calculated as ``an average of the
+posterior distributions under each of the models considered, weighted by
+their posterior model probability.'' (Hoeting et al. 1999). The major
+difficulties for BMA are (1) how to sample models to test, and (2) how
+to calculate the posterior model probability given the data (or
+\(p(M|D)\) where \(M\) is the model, and \(D\) is the data). For model
+selection, we use the Markov Chain Monte Carlo Composition (MC3) method.
+We use the Bayesian Information Crieterion (BIC) approximation. To
+implement the MC3 method, we use the following steps:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Define a jumping distribution \(g(.)\), so that
+  \(g(M \rightarrow M')\) is non-zero for all possible window
+  constraints.
+\item
+  Specify a starting model, \(M\), and ellicit priors for models \(M\)
+  in \(\mathscr{M}\).
+\item
+  Given that the chain is in state \(M\), draw \(M'\), and accept it
+  with probability
+\end{enumerate}
+
+\[
+min  \Bigg \{ 1, \frac{p(M'|D)}{p(M|D)} \Bigg \} 
+\]
+
+otherwise, retain \(M\).
+
+\subsection{Step One: Defining a Window Constraint
+Sampler}\label{step-one-defining-a-window-constraint-sampler}
+
+In terms of window constraints, the target model, which is inestimable,
+is built by estimating each unique value of age, period, and cohort, as
+a dummy variable series:
+
+\[
+E(Y) = \beta_{00} + \sum_{\lambda=2}^{\lambda} \beta_{1\lambda}A_{\lambda} +  \sum_{\rho=2}^{\rho} \beta_{2\rho}P_{\rho} +  \sum_{\kappa=2}^{\kappa} \beta_{3\kappa}C_{\kappa}
+\]
+
+where \(\beta\) is an estimated effect, \(\lambda\), \(\rho\) and
+\(\kappa\) index unique values for age, period, and cohort, and \(A\),
+\(P\), and \(C\) stand for matricies of dummy variable series for age,
+period, and cohort. This model is unidentified, because, as with the
+continuous case, the dummy variables in any two of the matricies above
+fully condition the third matrix. In other words, the indicator variable
+in \(C\) is a function of the indicators in \(A\) and \(P\) (in
+mathematical terms,the probability that any given cohort dummy variable
+is one or zero is exctly dependent on the values of A and P, so that
+\(p(C_{\kappa}=0|A_{\lambda},P_{\kappa}\)) is always exaclty zero, or
+exactly one, depending on the values of \(A\) and \(P\)).
+
+We can break this dependencey, however, by transofrming \(A\), \(P\),
+and \(C\)---preferably without resulting to some prespecified arbitrary
+set of constraints (Gelman 2014, at p.~366). How do the window
+constraints break the linear dependency? By way of example, we can
+construct an age dummy variable series where \(A\) is sliced into two
+groups based on some cut-point so that, for example, individuals who are
+older than 30 have a dummy variable of 1 and the dummy variable for
+those 30 or younger euqls 0. This would identify a binary dummy variable
+with an older and a younger group. We can generalize this expression to
+an arbitrary vector of cut-points, \(G\) with subscript \(\gamma\) so
+that the window constraints of \(A\) in equation \_\_ are as follows:
+
+\[
+\mbox{for} \gamma < max(\gamma):
+A_{\lambda}  =
+\begin{cases}
+  1, & \mbox{if} & a > G_{\gamma} & \mbox{and} & a \leq G_{\gamma+1} \\
+  0, & \mbox{if} & a < G_{\gamma} & \mbox{or} & a > G_{\gamma+1}
+\end{cases}
+\]
+
+If the vector \(G\) and \(\gamma\) have the following properties:
+\(max(G) = max(a)\), \(min(G) < min(a)\), \(G_2 \geq min(a)\) and
+\(\gamma>2\), then \(G\) can describe any posible sets of window
+restrictions for age. The first three requirement ensures that the dummy
+variable series \(A\) is fully defined across the entire range of the
+continuous variable \(a\). In particular, the first restriction ensures
+that the dummy variable series with the oldest ages in \(G\) contains
+the maximum value of \(a\). Similarly, the next two restrictins ensure
+that the smallest window constraint in \(G\) contains the minimum value
+of \(a\). The final constraint requires that \(G\) have at least three
+elements. Three elements in \(G\) defines a dummy variable. Using the
+example above, if \(a\) has a range of 5 to 50, then the dummy variale
+distinguishing older and younger respondents can be defined by
+\(G \in \{4,30,50\}\).
+
+Generalizing cross all dimensions of APC, permuting three similar
+vectors (say \(G^{(d)}\)) will describe any model for any possible
+window constraints detailed in equation 1. Accordingly, all permutations
+of G, as defined above, constitute the model space of window constraints
+(\(\mathscr{M}\)). For any given set of APC variables, \(\mathscr{M}\)
+is finite, but it can become large. For example, 5 unique ages, periods,
+and cohorts allow for 3,375 unique window models\footnote{A continuous
+  variable of 5 integers can be sliced into continous window constraints
+  in 15 ways (where \textbar{} indicates a window break for dummy
+  variables):
+
+  2 windows, 4 combinations: 1\textbar{}2345, 12\textbar{}345,
+  123\textbar{}45, 1234\textbar{}5
+
+  3 windows, 6 combinations: 1\textbar{}2\textbar{}345,
+  1\textbar{}23\textbar{}45, 1\textbar{}234\textbar{}5,
+  12\textbar{}3\textbar{}45, 12\textbar{}34\textbar{}5,
+  123\textbar{}4\textbar{}5
+
+  4 windows, 4 combinations: 1\textbar{}2\textbar{}3\textbar{}45,
+  1\textbar{}2\textbar{}34\textbar{}5,
+  1\textbar{}23\textbar{}4\textbar{}5,
+  12\textbar{}3\textbar{}4\textbar{}5
+
+  5 windows, 1 combination:
+  1\textbar{}2\textbar{}3\textbar{}4\textbar{}5
+
+  Since the hypothetical assumes 3 variables (A,P,and C) of 15
+  combinations each, total combinations are \(15^3=3,375\). Similar
+  calculations over an integer of 6 leads to 34 window combinations over
+  each dimension for a total of 39,304 possible models.}, and 6 unique
+values for each of age, period, and cohort allow for 38,304 different
+models. In any model space, only 1 model is inestimable because of
+perfect colinearity. This target model is (theoretially) the least
+biased, although it is almost certainly the most parsimonious. The
+question is how to best use information from some subset of possible
+models in \(\mathscr{M}\) to estimate unbiased APC effects of the target
+model. Bayesian Model Averaging (BMA) provides a straightforward way to
+combine models.
+
+There are two features of \(G\) that make the MC3 algorithm provides an
+attractive way to sample models. \(G\) can be decomposed into two parts:
+(1) the number of windows, and (2) the break points for each of the
+windows. By disaggregating \(G\) into these two parts, we use the
+Dirchelet distribution as the jumping distribution to construct matrix
+\(G\) to define models.
+
+\emph{Using the Dirichlet Distribution to Sample Window Groups (G).} As
+noted above, there are two basic features of vector \(G\). First, is the
+number of window breaks, or the rank of \(G\), and second is the
+location of the window breaks, or the values of \(G\). We use a uniform
+distribution over the range of A,P, or C to sample the number of window
+breaks. This is simple, straightforward, and noninformative. We use the
+Dirichelet distributon to sample the location of window breaks. The
+Dirichelet is well-suited to this task, and is commonly used in
+classification tasks \texttt{citation}. In additon, Taddy et al. (2015)
+show that the Dirichelet is a natural prior distribution for variable
+selection and value-splitting in classification and regression trees
+(CART) algortithms, common for machine learning. Our approach is a
+similar, as developing \(G\) is fundamentally a classificaiton task
+which aggregates similar ages, periods, and cohorts.
+
+To implement our sampling scheme, we draw two sets of auxiliary
+variables for each dimension (\(d\)) of APC.
+
+the window breaks, \(G^{(d)}\) of equation 2 are decomposed into (1) a
+simplex for each dimension, with the same length of unique elements in
+\(d\) (\(B^{(d)}\)), and (2) a scalar integer, \(w^d\). \(G^{(d)}\) is
+simply the product of \(B\) times \(w\). We use a uniform distribution
+to sample \(w\), and a Dirchelet distribution to sample from the simplex
+as follows:
+
+\[
+\begin{matrix}
+G^{(d)}_b = \Bigg \lfloor w^{(d)} \sum_{i=1}^{\tau_d} B^{(d)}_i \Bigg \rfloor,
+      \mbox{where} G_b > G_{b-1} \mbox{and} b \subseteq \tau_d   \\
+w^{(d)} \sim U(2,max(T^{(d)}))  \\
+B^{(d)} \sim Dir(\alpha_{\tau_d}) \\
+\end{matrix}
+\]
+
+Where \(\tau_{d}\) is the index number for the APC effects (the
+\(\lambda\), \(\rho\), or \(\kappa\) of equaiton 1) \(T\) is the
+continuous vector of values (the \(A\),\(P\), or \(C\)).
+\texttt{add\ explanation}
+
+\emph{Priors and Initial Model} The \(\alpha\) for the Dirichelet
+distribution are for each of the vunique values in the dimension (\(d\))
+for APC. The Dirchelet distribution draws a random projection on the
+standard simplex, \emph{i.e.} a vector of weights \(B\) weights between
+0 and 1 which sum to 1. Multiplying the vector of weights (\(B\)) by a
+scalar \(w\) provides a set of numbers which sum to the scalar value
+\(w^{(d)}\). We transform \(B\) and \(w\) into matrix \(G\) by selecting
+the unique floor rounded values of the product of the cumulative sums of
+\(B\):
+
+Where \(G\) is a vector of the type described in equation 2, and \(d\)
+indexes \(G\) and is a subset of the unique values in \(T\).
+
+\section{A Simulation}\label{a-simulation}
+
+\section{An Empirical Example from the
+GSS}\label{an-empirical-example-from-the-gss}
+
+\section{Discussion}\label{discussion}
+
+\section*{Conclusion}\label{conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+
+\hyperdef{}{ref-glennux5fstrategiesux5f2005}{\label{ref-glennux5fstrategiesux5f2005}}
+Anon. 2005. ``Strategies for Estimating Age, Period, and Cohort
+Effects.'' Pp. 12--35 in \emph{Cohort analysis}. 2455 Teller
+Road,?Thousand Oaks?California?91320?United States of America? SAGE
+Publications, Inc.
+
+\hyperdef{}{ref-bellux5fhierarchicalux5f2017}{\label{ref-bellux5fhierarchicalux5f2017}}
+Bell, Andrew and Kelvyn Jones. 2017. ``The Hierarchical
+Age-Period-Cohort Model: Why Does It Find the Results That It Finds?''
+\emph{Quality \& Quantity}.
+
+\hyperdef{}{ref-burgardux5feffectsux5f2015}{\label{ref-burgardux5feffectsux5f2015}}
+Burgard, Sarah A. and Lucie Kalousova. 2015. ``Effects of the Great
+Recession: Health and Well-Being.'' \emph{Annual Review of Sociology}
+41(1):181--201.
+
+\hyperdef{}{ref-cammux5fessentialsux5f2016}{\label{ref-cammux5fessentialsux5f2016}}
+Camm, Jeffrey D. 2016. \emph{Essentials of Business Analytics}. Mason,
+OH: Cengage South western.
+
+\hyperdef{}{ref-fragosoux5fbayesianux5f2015}{\label{ref-fragosoux5fbayesianux5f2015}}
+Fragoso, Tiago M. and Francisco Louzada Neto. 2015. ``Bayesian Model
+Averaging: A Systematic Review and Conceptual Classification.''
+\emph{arXiv preprint arXiv:1509.08864}.
+
+\hyperdef{}{ref-gelmanux5fbayesianux5f2014}{\label{ref-gelmanux5fbayesianux5f2014}}
+Gelman, Andrew. 2014. \emph{Bayesian Data Analysis}. Third edition. Boca
+Raton: CRC Press.
+
+\hyperdef{}{ref-hoetingux5fbayesianux5f1999}{\label{ref-hoetingux5fbayesianux5f1999}}
+Hoeting, Jennifer A., David Madigan, Adrian E. Raftery, and Chris T.
+Volinsky. 1999. ``Bayesian Model Averaging: A Tutorial.''
+\emph{Statistical science} 382--401.
+
+\hyperdef{}{ref-jacksonux5fbiologicalux5f2003}{\label{ref-jacksonux5fbiologicalux5f2003}}
+Jackson, Stephen HD, Martin R. Weale, and Robert A. Weale. 2003.
+``Biological Age---what Is It and Can It Be Measured?'' \emph{Archives
+of gerontology and geriatrics} 36(2):103--15.
+
+\hyperdef{}{ref-lamux5fisux5f2014}{\label{ref-lamux5fisux5f2014}}
+Lam, Jack, Wen Fan, and Phyllis Moen. 2014. ``Is Insecurity Worse for
+Well-Being in Turbulent Times? Mental Health in Context.'' \emph{Society
+and Mental Health} 4(1):55--73.
+
+\hyperdef{}{ref-mortimerux5fgovernmentux5f2003}{\label{ref-mortimerux5fgovernmentux5f2003}}
+Leisering, Lutz. 2003. ``Government and the Life Course.'' Pp. 205--25
+in \emph{Handbook of the life course}, edited by Jeylan T. Mortimer and
+Michael J. Shanahan. New York: Kluwer Academic/Plenum Publishers,
+
+\hyperdef{}{ref-luoux5fassessingux5f2013}{\label{ref-luoux5fassessingux5f2013}}
+Luo, Liying. 2013. ``Assessing Validity and Application Scope of the
+Intrinsic Estimator Approach to the Age-Period-Cohort Problem.''
+\emph{Demography} 50(6):1945--67.
+
+\hyperdef{}{ref-luoux5fblockux5f2016}{\label{ref-luoux5fblockux5f2016}}
+Luo, Liying and James S. Hodges. 2016. ``Block Constraints in
+Age--Period--Cohort Models with Unequal-Width Intervals.''
+\emph{Sociological Methods \& Research} 45(4):700--726.
+
+\hyperdef{}{ref-waiteux5fconstrainedux5f2014}{\label{ref-waiteux5fconstrainedux5f2014}}
+Moen, Phyllis. 2014. ``Constrained Choices: The Shifting Institutional
+Contexts of Aging and the Life Course.'' Pp. 175--216 in \emph{New
+directions in the sociology of aging}, edited by Linda J. Waite, Thomas
+J. Plewes, and National Research Council (U.S.). Washington, D.C:
+National Academies Press.
+
+\hyperdef{}{ref-rafteryux5fbayesianux5f1995}{\label{ref-rafteryux5fbayesianux5f1995}}
+Raftery, Adrian E. 1995. ``Bayesian Model Selection in Social
+Research.'' \emph{Sociological Methodology} 25:111--63.
+
+\hyperdef{}{ref-ryderux5fcohortux5f1965}{\label{ref-ryderux5fcohortux5f1965}}
+Ryder, Norman B. 1965. ``The Cohort as a Concept in the Study of Social
+Change.'' \emph{American Sociological Review} 30(6):843--61.
+
+\hyperdef{}{ref-taddyux5fbayesianux5f2015}{\label{ref-taddyux5fbayesianux5f2015}}
+Taddy, Matt, Chun-Sheng Chen, Jun Yu, and Mitch Wyle. 2015. ``Bayesian
+and Empirical Bayesian Forests.'' \emph{arXiv preprint
+arXiv:1502.02312}.
+
+\hyperdef{}{ref-vaiseyux5fculturalux5f2016}{\label{ref-vaiseyux5fculturalux5f2016}}
+Vaisey, Stephen and Omar Lizardo. 2016. ``Cultural Fragmentation or
+Acquired Dispositions? A New Approach to Accounting for Patterns of
+Cultural Change.'' \emph{Socius: Sociological Research for a Dynamic
+World} 2:2378023116669726.
+
+\hyperdef{}{ref-wooldridgeux5fintroductoryux5f2009}{\label{ref-wooldridgeux5fintroductoryux5f2009}}
+Wooldridge, Jeffrey M. 2009. \emph{Introductory Econometrics: A Modern
+Approach}. 4th ed. Mason, OH: South Western, Cengage Learning.
+
+\hyperdef{}{ref-yangux5fage-period-cohortux5f2013}{\label{ref-yangux5fage-period-cohortux5f2013}}
+Yang, Yang and Kenneth C. Land. 2013. \emph{Age-Period-Cohort Analysis:
+New Models, Methods, and Empirical Applications}. Boca Raton, FL: CRC
+Press.
+
+\end{document}

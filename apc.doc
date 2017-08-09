@@ -1,0 +1,162 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title>Ensembling Age-Period-Cohort Estimates by Averaging Multiple Window Constraint Models using Markov Chain Monte Carlo Methods</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
+</head>
+<body>
+<div id="header">
+<h1 class="title">Ensembling Age-Period-Cohort Estimates by Averaging Multiple Window Constraint Models using Markov Chain Monte Carlo Methods</h1>
+<h2 class="author">true</h2>
+<h2 class="author">true</h2>
+</div>
+<h1 id="abstract">Abstract</h1>
+<p>Key words: Computational Sociology, Methods, Life Course, Bayesian, Culture</p>
+<h1 id="introduction">Introduction</h1>
+<h1 id="background">Background</h1>
+<p>Both classic and modern studies have proposed different effects across three social dimensions of time: age, period, and cohort <span class="citation">(Ryder 1965)</span>. These dimensions of time operate on individuals in different ways as they flow through social space. Age effects are driven either by the common experiences associated with the biological process of aging <span class="citation">(Jackson, Weale, and Weale 2003)</span>, or persistent age-structuring institutions, like high school or retirement <span class="citation">(Leisering 2003; Moen 2014)</span>. Period effects are responses of everyone to contemporaneous social experiences, like recessions or wars <span class="citation">(Lam, Fan, and Moen 2014)</span>. Finally, cohort effects are socialization effects. They are broad-based historical events that stick to the populations experiencing them, even after the event has long since ended <span class="citation">(Vaisey and Lizardo 2016)</span>. In contemporary research, cohorts are virtually always defined in terms of birth year.</p>
+<p>These three dimensions of time sit at the center of some recurrent debates. For example, cultural sociologists are divided over whether the main driver of culture is a period process (cultural fragmentation) or a cohort process (acquired dispositions) <span class="citation">(Vaisey and Lizardo 2016)</span>. Clinical reasearchers and biodemographers are looking for biological age—indicators of biological deterioration—but argue about confounding from cohort changes <span class="citation">(Jackson et al. 2003)</span>. And yet others are concerned about separating long-term and short-term impacts of important events, like the Great Recession <span class="citation">(Burgard and Kalousova 2015)</span>.</p>
+<p>Unfortunately, it is not trivial to statistically estimate the unique effects of age, period, and cohort which would allow analysts to evaluate evidence that may settle these questions. The fundamental problem is identification: these three dimensions are linearly dependent. Two of the dimensions define the third. If a researcher knows an individual’s age, and the year of the survey, cohort is also defined. Because these variables are exactly colinear, they are not estimable using classic statistical techniques. A number of solutions have been proposed to address this conundrum, these include traditional methods like block/window constraints <span class="citation">(Anon. 2005)</span>, and new methods, including statistical transformation (the “intrinsic estimator”), and random effects models <span class="citation">(Yang and Land 2013)</span>.</p>
+<p>The past several years have seen a resurgence in debates surrounding on methodology <span class="citation">(Bell and Jones 2017; Luo 2013; Luo and Hodges 2016)</span>. Perhaps the most common argument is that the “constraints”, <em>i.e.</em> assumptions used to break the APC identity, produce unknown biases into the models. These particular complaints represent the extreme case of multicollinearity, a well-known, though difficult problem in statistical theory <span class="citation">(Wooldridge 2009, at p. 95-98)</span>, with numerous cautions in applied texts that separating highly colinear effects is difficult <span class="citation">(Camm 2016, at p. 328)</span>. Viewing the APC identity problem as an issue of multicolinnearity in a Bayesian perspective provides a simple way to understand and adcress the problem. Ultimately, multicollinearity significantly reduce the ability of the data to supply information to produce the estimates, potentially introducing sensitivity to the prior <span class="citation">(Gelman 2014, at p. 305-306)</span>, including assumtpions of linearity. To put it another way, the critique of APC models in general, and window constraints in particular <span class="citation">(Luo and Hodges 2016)</span>, is that different sets of assumptions lead to different (and inconsistent) results. But, what if instead of focusing on finding a <em>best</em> fitting model, we use a simple nonlinear approach (block or window modelling), and hundreds of assumptions? Ensembling is the combination of estimates from different models subject to some weighting scheme. Bayesian Model Averaging (BMA) allows us to do just that with the APC problem: estimate hundreds—perhaps even thousands—of models with differeing assumptions, and then combine them, weighted by a measure of the model’s posterior probability.</p>
+<h1 id="bayesian-model-averaging">Bayesian Model Averaging</h1>
+<p>The theoretical backdrop of BMA applies to this curcumstance quite well. In principal, there is no one true (or best) model; instead estimates are conditional on models from the modeling space (<span class="math inline">\(\mathscr{M}\)</span>), and have a posterior distribution, which is calculated as a weighted average of all models <span class="citation">(Raftery 1995:144–45)</span>. It has been applied in diverse areas from weather forecasting to biology to social science <span class="citation">(Fragoso and Neto 2015)</span> . BMA operates under the simple fact that any particular estimate, including effect size and significance, have a posterior probability distribution which is calculated as “an average of the posterior distributions under each of the models considered, weighted by their posterior model probability.” <span class="citation">(Hoeting et al. 1999)</span>. The major difficulties for BMA are (1) how to sample models to test, and (2) how to calculate the posterior model probability given the data (or <span class="math inline">\(p(M|D)\)</span> where <span class="math inline">\(M\)</span> is the model, and <span class="math inline">\(D\)</span> is the data). For model selection, we use a Markov Chain Monte Carlo (MCMC) algorithm, similar in spirit and design to the reversible jump, MC3,and SVSS algorthims <code>citations</code>, but specific to modelling piecewise constant breaks in a set of highly collinear continuous variables. We call it the Stochastic Window Sampler (SWS). To implement SWS, we use the following steps:</p>
+<ol style="list-style-type: decimal">
+<li>Define a jumping distribution <span class="math inline">\(g(.)\)</span>, so that <span class="math inline">\(g(M \rightarrow M&#39;)\)</span> is non-zero for all possible window constraints.</li>
+<li>Specify a starting model, <span class="math inline">\(M\)</span>, and ellicit priors for models <span class="math inline">\(M\)</span> in <span class="math inline">\(\mathscr{M}\)</span>.</li>
+<li>Given that the chain is in state <span class="math inline">\(M\)</span>, draw <span class="math inline">\(M&#39;\)</span>, and accept it with probability</li>
+</ol>
+<p><span class="math display">\[
+min  \Bigg \{ 1, \frac{p(M&#39;|D)}{p(M|D)} \Bigg \} 
+\]</span></p>
+<p>otherwise, retain <span class="math inline">\(M\)</span>. 4. After a sufficient number of iterations, use all accepted models, <span class="math inline">\(M\)</span>, and combine them using BMA to estimate APC effects.</p>
+<h2 id="step-one-defining-a-window-constraint-sampler-and-jumping-distribution">Step One: Defining a Window Constraint Sampler and Jumping Distribution</h2>
+<p>In terms of window constraints, the target model, which is inestimable, is built by coding each unique value of age, period, and cohort, as a dummy variable series:</p>
+<p><span class="math display">\[
+E(Y) = \beta_{00} + \sum_{\lambda=2}^{\lambda} \beta_{1\lambda}A_{\lambda} +  \sum_{\rho=2}^{\rho} \beta_{2\rho}P_{\rho} +  \sum_{\kappa=2}^{\kappa} \beta_{3\kappa}C_{\kappa} \label{eq:1}
+\]</span></p>
+<p>In Equation 1, <span class="math inline">\(\beta\)</span> is an estimated effect. <span class="math inline">\(\lambda\)</span>, <span class="math inline">\(\rho\)</span> and <span class="math inline">\(\kappa\)</span> index unique values for age, period, and cohort, and <span class="math inline">\(A\)</span>, <span class="math inline">\(P\)</span>, and <span class="math inline">\(C\)</span> stand for matricies of dummy variable series for age, period, and cohort. This model is unidentified, because, as with the continuous case, the dummy variables in any two of the matricies above fully condition the third matrix. In other words, the indicator variable in <span class="math inline">\(C\)</span> is a function of the indicators in <span class="math inline">\(A\)</span> and <span class="math inline">\(P\)</span> (in mathematical terms,the probability that any given cohort dummy variable is one or zero is exctly dependent on the values of A and P, so that <span class="math inline">\(p(C_{\kappa}=0|A_{\lambda},P_{\kappa}\)</span>) is always exaclty zero, or exactly one, depending on the values of <span class="math inline">\(A\)</span> and <span class="math inline">\(P\)</span>).</p>
+<p>We can break this dependencey, however, by transofrming <span class="math inline">\(A\)</span>, <span class="math inline">\(P\)</span>, and <span class="math inline">\(C\)</span>—preferably without resorting to some prespecified arbitrary set of constraints <span class="citation">(Gelman 2014, at p. 366)</span>. How do the window constraints break the linear dependency? By way of example, we can construct an age dummy variable series where <span class="math inline">\(A\)</span> is sliced into two groups based on some cut-point so that, for example, individuals who are older than 30 have a dummy variable of 1. This would identify a binary dummy variable for an older and a younger group. We can generalize this expression to an arbitrary vector of cut-points, <span class="math inline">\(G\)</span> with subscript <span class="math inline">\(\gamma\)</span> so that the window constraints of <span class="math inline">\(A\)</span> in Equation 1 are as follows:</p>
+<p><span class="math display">\[
+\mbox{for} \gamma &lt; max(\gamma):
+A_{\lambda}  =
+\begin{cases}
+  1, &amp; \mbox{if} &amp; a &gt; G_{\gamma} &amp; \mbox{and} &amp; a \leq G_{\gamma+1} \\
+  0, &amp; \mbox{if} &amp; a &lt; G_{\gamma} &amp; \mbox{or} &amp; a &gt; G_{\gamma+1}
+\end{cases}
+\]</span></p>
+<p>If the vector <span class="math inline">\(G\)</span> and <span class="math inline">\(\gamma\)</span> have the following properties: <span class="math inline">\(max(G) = max(a)\)</span>, <span class="math inline">\(min(G) &lt; min(a)\)</span>, <span class="math inline">\(G_2 \geq min(a)\)</span> and <span class="math inline">\(\gamma&gt;2\)</span>, then permutatios of <span class="math inline">\(G\)</span> descirbe all posible sets of window restrictions for age. The first three requirement ensures that the dummy variable series <span class="math inline">\(A\)</span> is fully defined across the entire range of the continuous variable <span class="math inline">\(a\)</span>. In particular, the first restriction ensures that the dummy variable series with the oldest ages in <span class="math inline">\(G\)</span> contains the maximum value of <span class="math inline">\(a\)</span>. Similarly, the next two restrictins ensure that the smallest window constraint in <span class="math inline">\(G\)</span> contains the minimum value of <span class="math inline">\(a\)</span>. The final constraint requires that <span class="math inline">\(G\)</span> have at least three elements. Three elements in <span class="math inline">\(G\)</span> defines a single dummy variable. Using the example above, if <span class="math inline">\(a\)</span> has a range of 5 to 50, then the dummy variable distinguishing older and younger respondents can be defined by <span class="math inline">\(G \in \{4,30,50\}\)</span>.</p>
+<p>Generalizing cross all dimensions of APC by permuting three similar vectors (say <span class="math inline">\(G^{(d)}\)</span>) will describe any model for any possible window constraints detailed in equation 1. Accordingly, all permutations of G, as defined above, constitute the model space of window constraints (<span class="math inline">\(\mathscr{M}\)</span>). For any given set of APC variables, <span class="math inline">\(\mathscr{M}\)</span> is finite, but it can become large. For example, a set of continous ages, periods and cohorts weach with a range of 5 allows for 3,375 unique window models<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a>. Bump them all to range of 6 and there are 38,304 unique window models. In any model space, only 1 model is inestimable because of perfect collinearity. Based on the statistical criticisms lobbied at APC models, critiques arge that this target model is (theoretially) the least biased, becasue it imposes the fewest assumptions on the models <span class="citation">(Bell and Jones 2017; Luo and Hodges 2016)</span>. Although it is almost certainly the most parsimonious. The question is how to best use information from some subset of possible models in <span class="math inline">\(\mathscr{M}\)</span> to estimate unbiased APC effects of the target model. MCMC methods from Bayesian Model Averaging (BMA) provides a straightforward way to combine models. Generally speaking, these methods search across some predefined neighborhood of models, and then use a weighted average of the posterior esitmates for inference.</p>
+<p>Because <span class="math inline">\(G^{(d)}\)</span> as defined in equation __ describes all possible window models for equation 1, any process that samples from <span class="math inline">\(G\)</span> by definition samples from all potential models of window breaks. Accordingly, sampling window breaks is simply a matter of smapling appropriate values for <span class="math inline">\(G\)</span>. In Bayesian statistics and data-driven inference like machine learning, thsese sorts of clustering problems are often solved using a Dirchelet distribution.</p>
+<p><em>Sampling the Window Groups (G) using the Dirchelet Distribution.</em> There are two basic features of vector <span class="math inline">\(G\)</span>. First, is the number of window breaks, or the rank of <span class="math inline">\(G\)</span>, and second is the location of the window breaks, or the probablility that particular values of the continuous variables will occur in <span class="math inline">\(G\)</span>. We use the Dirichelet distributon to sample both the location and number of window breaks. The Dirichelet is well-suited to this task, and is commonly used in classification tasks <code>citation</code>. In additon, Taddy et al. <span class="citation">(2015)</span> show that the Dirichelet is a natural prior distribution for variable selection and value-splitting in classification and regression trees (CART) algortithms, common for machine learning. Our approach is a similar, as developing <span class="math inline">\(G\)</span> is fundamentally a classificaiton task which aggregates similar ages, periods, and cohorts. Finally, a classical description of the Dirichelet distribution is one of “string-cutting.” This is preciesely the task in sampling <span class="math inline">\(G\)</span>—to cut a continuous string of variables into some subset of shorter lengths, where the effects are equal.</p>
+<p>To implement our sampling scheme, we use a set of auxiliary variables for each dimension (<span class="math inline">\(d\)</span>) of APC. These are the intensity, or weight values for the Dirchelet distribution (<span class="math inline">\(\alpha\)</span>), which are numbers between 0 and infinity. Various combinations of <span class="math inline">\(\alpha\)</span> sample from the simplex (represented as <span class="math inline">\(B\)</span> below) for each unique value of A, P, or C. The simplex is a vector of numbers between 0 and 1 which sum to 1. <span class="math inline">\(G^{(d)}\)</span> is the rounded, cumulative sum of the product <span class="math inline">\(B\)</span> times the maximum possible number of window breaks (<em>i.e.</em> the number of unique values). More formally, we consruct <span class="math inline">\(G\)</span> as follows.</p>
+<p><span class="math display">\[
+G^{(d)}_b = W^{(d)}_i, \mbox{iff } G^{(d)}_b &gt; G^{(d)}_{b-1}, \mbox{ where} \\
+\]</span></p>
+<p><span class="math display">\[
+W^{(d)}_i = \Bigg \lfloor max(\tau^{(d)}) \sum_{i=1}^{\tau_d} B^{(d)}_i \Bigg \rceil, \\
+\]</span></p>
+<p><span class="math display">\[
+B^{(d)} \sim Dir(\alpha_{\tau_d})
+\]</span></p>
+<p>Where <span class="math inline">\(\tau_{d}\)</span> is the index number for the APC effects (the <span class="math inline">\(\lambda\)</span>, <span class="math inline">\(\rho\)</span>, or <span class="math inline">\(\kappa\)</span> of equaiton 1. <span class="math inline">\(T\)</span> is the continuous vector of values (the <span class="math inline">\(A\)</span>,<span class="math inline">\(P\)</span>, or <span class="math inline">\(C\)</span> of equation 1). We take the rounded value of the product of the cumulative sum of <span class="math inline">\(B\)</span> and the maximum index value of A, P, or C, which provides a string of integers from 1 to the maximum index. These integers identify continuous groupings of windows. Back to the binary example above, the floor-rounded cumulative sum, <span class="math inline">\(W\)</span> would be a vector of <code>26 ones, followed by 20 twoes --- this is wrong; needs edited; as does the next two sentences</code>. <span class="math inline">\(G\)</span> is simply the unique elements of <span class="math inline">\(W\)</span>, begins before the minumum value, and ends after the maximum value. In other words <span class="math inline">\(G\)</span>, sample d in this manner, describes a unique window model of the form laid out in Equation __. Moving from one realization of <span class="math inline">\(G\)</span> to another, is a matter of changing the <span class="math inline">\(\alpha\)</span> from one set of models to the next.</p>
+<p>As commonly used in MCMC methods, we use a multivariate normal distribution with a specified variance to update <span class="math inline">\(\alpha\)</span> from one model (<span class="math inline">\(M\)</span>) to the next (<span class="math inline">\(M&#39;\)</span>) <code>cite scott's book</code>. This produces a random walk on the auxiliary parameter <span class="math inline">\(\alpha\)</span> which sequentially updates the probability of window breaks, by adjusting the probability of a window break at each value of APC. Based on the acceptance probability described below, the chain will converge to better fitting sets of window models as the chain approaches infinity.</p>
+<h2 id="step-2-specify-a-starting-model-m">Step 2: Specify a Starting Model <span class="math inline">\(M\)</span></h2>
+<p>This constuction makes the ellicitation of more and less informative priors straightforward. In particular, the <span class="math inline">\(\alpha\)</span> identifies the probability that a break occurs between two contiguous groupings of age, period or cohort. An larger <span class="math inline">\(\alpha\)</span> value represents a more diffuse simplex <span class="citation">(Gelman 2014:69)</span>. Smaller values indicate less weight, <em>i.e.</em> it is less likely to be a window break, and larger values indicate more weight, or it is more likely to be a window break. The meaning of <span class="math inline">\(\alpha\)</span> parameter in the Dirichelet distriution for equations __ to __ is pictured in Figure 1 below.</p>
+<p>Each panel of Figure 1 depicts 1,000 random draws from Equations __ and __ across a continuous variable of 8 dimensions. In the top panel, each <span class="math inline">\(\alpha\)</span> is equal to 1. The bar graph reports the proportion of times that each dimension represents a new windows break. The first dimension is equal to 100% (as required to span the entire range, the first dummy variable must begin with the minimum value). Beyond that, the rest begin a window break nearly all of the time, with an average number of breaks equal to 7.2. By contrast, the bottom panel has a non-uniform array of <span class="math inline">\(\alpha\)</span> values spanning 0.3 to 17.8. In response, the probability of window breaks is different between each value, with the highest probablities corresponding to the highest values in <span class="math inline">\(\alpha\)</span>, and the lowest values corresponding to the lowest values of <span class="math inline">\(\alpha\)</span>. The average number of window breaks in for this distribution is about one-third less than the top panel at 4.4.</p>
+<p>[Figure 1 About Here]</p>
+<p>Figure 1 illustrates that the higher the value <span class="math inline">\(\alpha\)</span>, the higher the probability that the corresponding observed value will be a window break. Accordingly, the Dirichelet also makes it easy to specify more and less informative priors. A researcher can ellicit a more informative prior by placing larger values of <span class="math inline">\(\alpha\)</span> on particular values of a dimension <span class="math inline">\(d\)</span> to make it more probable that this will constitute a window break. The final requirement of this step is to choose a starting model <span class="math inline">\(M\)</span>. We choose <span class="math inline">\(M\)</span> such that it starts close to the target model, <em>i.e.</em>, there are a large number of window breaks. To accomplish this, we set the initial value of each <span class="math inline">\(\alpha\)</span> to the dimensionality of the A, P, or C. As with the example outlined in Figure 1, the mean number of window breaks between the maximum value of each A, P, or C. This is consistent with the interpretation of <span class="math inline">\(\alphas\)</span> as “prior sample size” <code>cite gelman</code>. This prior sample size is approximately the size of the window breaks less one (as the mean value in the xample above). Alternative starting values are possible, as are different starting values for multiple MCMC chains.</p>
+<h2 id="step-3-accept-or-reject-proposed-models-in-a-markov-chain">Step 3: Accept or Reject Proposed Models in a Markov Chain</h2>
+<p>Having identified the sampling procedure, the jumping kernel, and the starting vaues, the next step is sample proposal models and accept or reject them. As outlined above, each chain takes the current model, <span class="math inline">\(M\)</span>, and samples <span class="math inline">\(M&#39;\)</span> by permuting the vector of <span class="math inline">\(\alphas\)</span> from a normal distribution. These <span class="math inline">\(\alpha&#39;\)</span> values are used to draw a model of window constraints <span class="math inline">\(M&#39;\)</span>. Whether to accpet <span class="math inline">\(M&#39;\)</span> in favor of <span class="math inline">\(M\)</span> becomes a problem of model comparison. A standard procedure for model comparison of non-nested models is the Bayes Factor, which is the marginal probability of model <span class="math inline">\(M\)</span> divided by the marginal probability of model <span class="math inline">\(M&#39;\)</span>. We adopt the jumping kernel described in <code>citation</code>, which accepts model <span class="math inline">\(M&#39;\)</span> with a probability <span class="math inline">\(R\)</span> as follows.</p>
+<p><code>you need to read the MC3 models to justify this...</code></p>
+<p><span class="math display">\[
+R = min  \Bigg \{ 1, \frac{p(M&#39;|D)}{p(M|D)} \Bigg \} 
+\]</span></p>
+<p>The chain <span class="math inline">\(M&#39;\)</span> is accepted if <span class="math inline">\(R\)</span> is greater than a value drawn from a uniform distribution between 0 and 1 (<span class="math inline">\(U \sim (0,1)\)</span>). The Bayes Factor above can be difficult to calculate, depending on the model and the priors. There are, however, a number of possibilities, including use of the BIC approximation to the Bayes Factor<code>citaiton</code>.</p>
+<h2 id="step-4-ensemble-accepted-models-in-the-mcmc-chain">Step 4: Ensemble Accepted Models in the MCMC Chain</h2>
+<p>Finally, after a specified number of iterations across the Markov Chain, any desired estimate, <span class="math inline">\(\Delta\)</span> can be calculated using the weighted average of the effects times the posterior model probabilities.</p>
+<p><span class="math display">\[
+E(\Delta|D) = \sum_{k=0}^{K} \hat{\Delta} \pi(M_k|D)
+\]</span></p>
+<p>As before, the probabilites can be difficult to calculate. However, decades of work have developed these estimates, including an extensive classification laid out by Raftery <span class="citation">(1995)</span> more than 20 years ago in <em>Sociological Methodology</em>.</p>
+<h1 id="a-simulation">A Simulation</h1>
+<p>a linear model that reduces to the OLS estimation of .</p>
+<h1 id="an-empirical-example-using-the-gss">An Empirical Example Using the GSS</h1>
+<h1 id="discussion">Discussion</h1>
+<h1 id="conclusion">Conclusion</h1>
+<p><strong>References</strong></p>
+<div class="references">
+<div id="ref-glenn_strategies_2005">
+<p>Anon. 2005. “Strategies for Estimating Age, Period, and Cohort Effects.” Pp. 12–35 in <em>Cohort analysis</em>. 2455 Teller Road,?Thousand Oaks?California?91320?United States of America? SAGE Publications, Inc.</p>
+</div>
+<div id="ref-bell_hierarchical_2017">
+<p>Bell, Andrew and Kelvyn Jones. 2017. “The Hierarchical Age-Period-Cohort Model: Why Does It Find the Results That It Finds?” <em>Quality &amp; Quantity</em>.</p>
+</div>
+<div id="ref-burgard_effects_2015">
+<p>Burgard, Sarah A. and Lucie Kalousova. 2015. “Effects of the Great Recession: Health and Well-Being.” <em>Annual Review of Sociology</em> 41(1):181–201.</p>
+</div>
+<div id="ref-camm_essentials_2016">
+<p>Camm, Jeffrey D. 2016. <em>Essentials of Business Analytics</em>. Mason, OH: Cengage South western.</p>
+</div>
+<div id="ref-fragoso_bayesian_2015">
+<p>Fragoso, Tiago M. and Francisco Louzada Neto. 2015. “Bayesian Model Averaging: A Systematic Review and Conceptual Classification.” <em>arXiv preprint arXiv:1509.08864</em>.</p>
+</div>
+<div id="ref-gelman_bayesian_2014">
+<p>Gelman, Andrew. 2014. <em>Bayesian Data Analysis</em>. Third edition. Boca Raton: CRC Press.</p>
+</div>
+<div id="ref-hoeting_bayesian_1999">
+<p>Hoeting, Jennifer A., David Madigan, Adrian E. Raftery, and Chris T. Volinsky. 1999. “Bayesian Model Averaging: A Tutorial.” <em>Statistical science</em> 382–401.</p>
+</div>
+<div id="ref-jackson_biological_2003">
+<p>Jackson, Stephen HD, Martin R. Weale, and Robert A. Weale. 2003. “Biological Age—what Is It and Can It Be Measured?” <em>Archives of gerontology and geriatrics</em> 36(2):103–15.</p>
+</div>
+<div id="ref-lam_is_2014">
+<p>Lam, Jack, Wen Fan, and Phyllis Moen. 2014. “Is Insecurity Worse for Well-Being in Turbulent Times? Mental Health in Context.” <em>Society and Mental Health</em> 4(1):55–73.</p>
+</div>
+<div id="ref-mortimer_government_2003">
+<p>Leisering, Lutz. 2003. “Government and the Life Course.” Pp. 205–25 in <em>Handbook of the life course</em>, edited by Jeylan T. Mortimer and Michael J. Shanahan. New York: Kluwer Academic/Plenum Publishers,</p>
+</div>
+<div id="ref-luo_assessing_2013">
+<p>Luo, Liying. 2013. “Assessing Validity and Application Scope of the Intrinsic Estimator Approach to the Age-Period-Cohort Problem.” <em>Demography</em> 50(6):1945–67.</p>
+</div>
+<div id="ref-luo_block_2016">
+<p>Luo, Liying and James S. Hodges. 2016. “Block Constraints in Age–Period–Cohort Models with Unequal-Width Intervals.” <em>Sociological Methods &amp; Research</em> 45(4):700–726.</p>
+</div>
+<div id="ref-waite_constrained_2014">
+<p>Moen, Phyllis. 2014. “Constrained Choices: The Shifting Institutional Contexts of Aging and the Life Course.” Pp. 175–216 in <em>New directions in the sociology of aging</em>, edited by Linda J. Waite, Thomas J. Plewes, and National Research Council (U.S.). Washington, D.C: National Academies Press.</p>
+</div>
+<div id="ref-raftery_bayesian_1995">
+<p>Raftery, Adrian E. 1995. “Bayesian Model Selection in Social Research.” <em>Sociological Methodology</em> 25:111–63.</p>
+</div>
+<div id="ref-ryder_cohort_1965">
+<p>Ryder, Norman B. 1965. “The Cohort as a Concept in the Study of Social Change.” <em>American Sociological Review</em> 30(6):843–61.</p>
+</div>
+<div id="ref-taddy_bayesian_2015">
+<p>Taddy, Matt, Chun-Sheng Chen, Jun Yu, and Mitch Wyle. 2015. “Bayesian and Empirical Bayesian Forests.” <em>arXiv preprint arXiv:1502.02312</em>.</p>
+</div>
+<div id="ref-vaisey_cultural_2016">
+<p>Vaisey, Stephen and Omar Lizardo. 2016. “Cultural Fragmentation or Acquired Dispositions? A New Approach to Accounting for Patterns of Cultural Change.” <em>Socius: Sociological Research for a Dynamic World</em> 2:2378023116669726.</p>
+</div>
+<div id="ref-wooldridge_introductory_2009">
+<p>Wooldridge, Jeffrey M. 2009. <em>Introductory Econometrics: A Modern Approach</em>. 4th ed. Mason, OH: South Western, Cengage Learning.</p>
+</div>
+<div id="ref-yang_age-period-cohort_2013">
+<p>Yang, Yang and Kenneth C. Land. 2013. <em>Age-Period-Cohort Analysis: New Models, Methods, and Empirical Applications</em>. Boca Raton, FL: CRC Press.</p>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>A continuous variable of 5 integers can be sliced into continous window constraints in 15 ways (where | indicates a window break for dummy variables):</p>
+<p>2 windows, 4 combinations: 1|2345, 12|345, 123|45, 1234|5</p>
+<p>3 windows, 6 combinations: 1|2|345, 1|23|45, 1|234|5, 12|3|45, 12|34|5, 123|4|5</p>
+<p>4 windows, 4 combinations: 1|2|3|45, 1|2|34|5, 1|23|4|5, 12|3|4|5</p>
+<p>5 windows, 1 combination: 1|2|3|4|5</p>
+<p>Since the hypothetical assumes 3 variables (A,P,and C) of 15 combinations each, total combinations are <span class="math inline">\(15^3=3,375\)</span>. Similar calculations over an integer of 6 leads to 34 window combinations over each dimension for a total of 39,304 possible models.<a href="#fnref1">↩</a></p></li>
+</ol>
+</div>
+</body>
+</html>

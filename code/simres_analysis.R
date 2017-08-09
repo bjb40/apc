@@ -19,7 +19,9 @@ extract = function(name,as.df=TRUE,unlist=FALSE){
 
 load(paste0(outdir,'simres.RData'))
 
-simres = simres[extract('samp')>20]
+#use first 6 sufficient simulations
+simres=simres[extract('samp')>=1000 & extract('bound')<.25]
+simres=simres[1:6]
 
 print(unlist(extract('acc')))
 extract('acc')
@@ -87,31 +89,37 @@ recenter=function(df){
 }
 
 
-plt_fit = function(simnum,recenter=FALSE){
+plt_fit = function(simnum,recenter=FALSE,legend=FALSE){
   #input simulaiton number; output is graph of effects
 pred = simres[[simnum]]$preds
 if(recenter){pred=lapply(pred,recenter)} #need fixed b/c first is not always continuous
 df=do.call(rbind,pred)
 df$type=substr(rownames(df),1,1)
 
-ls = c('1' = 'Actual', '2' = 'Estimated')
-
+if(legend){
+  ls = c('1' = 'Actual', '2' = 'Estimated')
+  
 df$lty1 = as.factor(ls[1])
 df$lty2 = as.factor(ls[2])
+plt=ggplot(df,aes(x=id,y=actual,linetype=lty1)) + 
+  labs(linetype='') +
+  geom_line(aes(y=m_est,linetype=lty2))
+  
+} else{
+  plt=ggplot(df,aes(x=id,y=actual)) +
+    geom_line(aes(y=m_est))
+  
+}
 
-plt=ggplot(df,aes(x=id,y=actual,linetype=lty1)) +
-  geom_line() +
-  geom_point(aes(y=est), alpha=0.25) +
-  geom_errorbar(aes(ymin=down,ymax=up), alpha=0.5) +
-  geom_line(aes(y=m_est,linetype=lty2)) +
+plt = plt + geom_line() +
+  #geom_point(aes(y=est), alpha=0.25) +
+  #geom_errorbar(aes(ymin=down,ymax=up), alpha=0.5) +
   geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25) +
   facet_grid(.~type,scales='free_x') +
   theme_minimal() +
   ylab('Effect') +
-  xlab('APC Value')  +
-  labs(linetype='',
-       title='Simulated Model.',
-       caption='n=1,000\nAverage of 2,000 Different Block Models Sampled Using MCMC.')
+  xlab('APC Value') 
+
 
 return(plt)
 }
@@ -123,11 +131,20 @@ return(plt)
 #print(plt_fit(14)) ##14 and 15 look good! --- i wonder if rhat would help that... 
 #21 & 15 has great example of best fit versus average!!!...
 
+label_add = labs(title='Results for Bayesian Model Averaging Window Constraint APC Models.',
+       caption='n=1,000\nAverage of 1,000 Different Block Models Sampled Using MCMC.')
+
 #print(plt_fit(21))
-print(plt_fit(worsto))
+print(plt_fit(worsto, recenter=TRUE,legend=TRUE))
 ggsave(paste0(imdir,'worst_sim.pdf'))
-print(plt_fit(besto))
+print(plt_fit(besto, recenter=TRUE, legend=TRUE))
 ggsave(paste0(imdir,'best_sim.pdf'))
+
+###twitter
+
+print(plt_fit(besto,recenter=TRUE,legend=TRUE)+label_add)
+ggsave(paste0(imdir,'twitter_sim.png'),
+       height=8,width=12,units='in',dpi=150)
 
 ######
 #table of overlaps...
@@ -137,7 +154,7 @@ ggsave(paste0(imdir,'best_sim.pdf'))
 ol.preds = function(preds,recenter=FALSE){
   #calculates overlap of preds --
   #returns proportion of actual within 95% intervals
-  if(recenter){pred=lapply(preds,recenter)} #need fixed b/c first is not always continuous
+  if(recenter){preds=lapply(preds,recenter)} #need fixed b/c first is not always continuous
   preds = do.call(rbind,preds)
   ol = preds$m_up > preds$actual & preds$m_down < preds$actual
   return(sum(ol)/length(ol))
@@ -150,6 +167,35 @@ opvd = abs(.5-opv)
 avpd = abs(.5-avp)
 rpvd = rpv[,'range.pval']
 
-cor(cbind(ol.adj,ol.unadj,opvd,avpd,rpvd))
+fdat = data.frame(ol.adj,ol.unadj,opvd,avpd,rpvd,
+                  samp=extract('samp'),bound=extract('bound'),
+                  r2=extract('r2')[,'Median'],acc=extract('acc'))
 
+r = fdat %>% 
+  dplyr::select(opvd,avpd,rpvd) %>% 
+  mutate(rpvd=1/rpvd)
 
+r=apply(r,2,rank)
+
+fdat$rank = rowMeans(r[,1:2])
+  
+  
+print(round(cor(fdat),3))
+
+fdatm = melt(fdat %>% dplyr::select(-samp,-ol.unadj),id='ol.adj')
+
+ggplot(fdat,aes(y=ol.adj,x=opvd,color=acc)) +
+  geom_point() +
+  theme_classic()
+
+plts2=lapply(1:6,plt_fit,recenter=TRUE)
+plts2 = lapply(plts2,function(x) x+theme_void())
+
+library(gridExtra)
+
+  grid.arrange(grobs=plts2,nrow=3)
+
+##output table
+library(knitr)
+
+tb = extract('tbeta')

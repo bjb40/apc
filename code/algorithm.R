@@ -1,13 +1,16 @@
 ###
+#algorithm for evaluating effects of previously simulated data
+#Bryce Bartlett
+###
 
+#load libraries and functions
 source('config~.R')
 
-#can pass these to ... parallel chains, maybe
+#preliminaries -- load simulated data; construct and identify
 load(paste0(datdir,'nsim.RData'))
 tdat$c=tdat$p-tdat$a
 dv='y1'
 actual='s1'
-#y=tdat[,dv]
 
 #begin chain fuction
 draw_chains = function(...){
@@ -30,16 +33,6 @@ tdat$c=tdat$p-tdat$a
 y=tdat[,dv]
 maxc= max(tdat$c)
 minc = min(tdat$c)
-
-#perturb
-"
-tdat$c = tdat$c + round(runif(nrow(tdat),-1,1))
-tdat$c = ifelse(tdat$c>maxc,maxc,tdat$c)
-tdat$c = ifelse(tdat$c<minc,minc,tdat$c)
-print('Check whether perturbation solves exact multicolinearity')
-print(summary(lm(y1~a+p+c,data=tdat)))
-Sys.sleep(5)
-"
 
 allmods=list() #may run into size constraints/may need to limit to best mods... 
 effects=xhats=ppd=list()
@@ -85,10 +78,6 @@ window.sample=function(var,alph){
 #set of numbers of random samples
 n.samples=100
 
-##you are using the wrong test --- for MC3, should be bic approx to bayes factor
-#see raferty
-#also, your proposal for alpha can use a mulitvariate...
-
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -100,9 +89,6 @@ names(dl) = d
 
 #set starting values
 all.alphas = lapply(d,function(x) data.frame(t(rep(dl[x],length(unique(tdat[,x]))))))
-#all.nwins = lapply(d,function(x) 3)
-#all.nwins = lapply(d,function(x) length(unique(tdat[,x]))/2)
-#all.nwins = lapply(d,function(x) length(unique(tdat[,x]))-1)
 
 names(all.alphas) = d #names(all.nwins) = d
 
@@ -117,37 +103,23 @@ for(s in 2:n.samples){
   #reset dataframe
   x=tdat[,c('a','p','c')]
   
-  #draw from proposal distributions
-  #all.nwins = lapply(all.nwins, function(x)
-  #                        append(x,x[s-1]+rnorm(1,mean=0,sd=1)))
-  #all.nwins = lapply(list(a='a',p='p',c='c'),function(x)
-  #  append(all.nwins[[x]],runif(1,2,length(unique(tdat[,paste(x)]))))
-  #  )
-
-  
   all.alphas= lapply(all.alphas, function(x)
                     rbind(x,x[s-1,]+rnorm(ncol(x),mean=0,sd=1)))
   
-  #all.alphas= lapply(all.alphas, function(x)
-  #  rbind(x,runif(ncol(x),0,10)))
-
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
 
-  #if(any(unlist(all.alphas)<0 | any(unlist(all.nwins)<2))){
+  #test for boundary constraint
   if(any(unlist(all.alphas)<0)){
-      
+    
+    #reject  
     bound=bound+1
     out.al=sum(unlist(all.alphas)<0)
-    #out.wi=sum(unlist(all.nwins)<2)
-    #print(c(out.al,out.wi))
-    #s=s-1
-    #mnum=mnum-1 #should consolidate these
     cat('\n\nOut-of-Sample-Space Warning.\n\n')
-    #acc=acc-1
+    
+    #reset
     for(d in seq_along(all.alphas)){
-      #all.nwins[[d]][s]=all.nwins[[d]][s-1]
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
-     #note that this samples different windows with same hyper param
+     #note that this may still sample different windows, just uses the same hyper-param
     }
 
   }
@@ -158,7 +130,6 @@ for(s in 2:n.samples){
   lc = length(levels(x$c)) == length(unique(tdat$c))
   if(all(la,lp,lc)){
     for(d in seq_along(all.alphas)){
-      #all.nwins[[d]][s]=all.nwins[[d]][s-1]
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
     }
   }
@@ -169,42 +140,18 @@ for(s in 2:n.samples){
   x$p=window.sample(x$p,all.alphas$p[s,]) 
   x$c=window.sample(x$c,all.alphas$c[s,]) 
   
-  
   #collect model data
   nr=data.frame(a=length(levels(x$a)),
                 p=length(levels(x$p)),
                 c=length(levels(x$c)))
   win=rbind(win,nr)
   
-  #collect breaks data
+  #collect window breaks data
   breaks$a[[s]]=attr(x$a,'breaks')
   breaks$p[[s]]=attr(x$p,'breaks')
   breaks$c[[s]]=attr(x$c,'breaks')
 
-"  
-if(s%%10==0){
-      cat('\n\nEstimating model',length(allmods),
-            'with windows:',
-            '\n\tage    ',nr$a,
-            '\n\tperiod ',nr$p,
-            '\n\tcohort ',nr$c,
-            '\n',
-          '\nwindows:\n\t',
-          unlist(lapply(all.nwins, function(x) round(x[s],2))),
-          '\nalphas\n\tmin:\n',
-              '\t',
-  unlist(lapply(all.alphas,function(x) round(min(unlist(x[s,])),4))),
-  '\n\tmax:\n',
-  '\t',
-  unlist(lapply(all.alphas,function(x) round(max(unlist(x[s,])),4))),
-  
-        '\nacceptance rate:',(acc/s),
-        '\nboundary rate:', (bound/s),
-        '\nAverage model time:',avtm,
-        '\n\n')
-}
-"
-      #add esitmate / lin_gibbs is bayesian gibbs sampler
+      #add esitmate / lin_gibbs is a bayesian gibbs sampler derived from Lynch 2007 pp. 172-173
       mnum = length(allmods)+1
       
       #reassign random references to each vector
@@ -219,9 +166,7 @@ if(s%%10==0){
       xmat = model.matrix(form.c,data=x)
       m = allmods[[s]] = lin_gibbs(y=y,x=xmat)
       
-      #this seems to match the 's1' margin property
-      #i don't acutally have to do the scopedummy stuff, b/c I can use the yhat
-      #from the lin_gibbs/same with the sampling below
+      #calculate grand means to evaluate conditional effects from linear model
       grand.means = data.frame(
         a = window(mean(tdat$a),breaks=attr(x$a,'breaks')),
         p = window(mean(tdat$p),breaks=attr(x$p,'breaks')),
@@ -234,7 +179,6 @@ if(s%%10==0){
       
       grand.means=(model.matrix(form.c,grand.means))
       
-     
       blockdat=lapply(x,scopedummy)
       blockdat$a = relevel(blockdat$a,ref=a.b)
       blockdat$p = relevel(blockdat$p,ref=p.b)
@@ -251,7 +195,7 @@ if(s%%10==0){
         #fix colnames
         colnames(predat[[eff]]) = sub('x',eff,colnames(predat[[eff]]))
         
-        #calculate means for xhat, & id effects at issue---this was replaced...
+        #calculate means for xhat, & id effects at issue
         xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
 
         #replace means of effect dimensions with indicator in matrix
@@ -259,7 +203,6 @@ if(s%%10==0){
         xhat[,calceff] = predat[[eff]]
         xhats[[mnum]][[eff]] = xhat
   
-        
         effects[[mnum]][[eff]] = t(xhat %*% t(m$betas))
         colnames(effects[[mnum]][[eff]]) = paste0(eff,unique(tdat[,eff]))
       }
@@ -270,11 +213,11 @@ if(s%%10==0){
         tm=Sys.time()
       
         
-        if(s==2){next}
+        if(s==2){next} #skip because evaluations do not exist for first iteration...
         
-        #selection criterion
+        #apply selection criterion
         
-        #bayes factorf approximation
+        #bayes factor approximation
         bf=exp((allmods[[s]]$bic-allmods[[s-1]]$bic)/2)
         R = min(1,bf)
         #R = min((allmods[[s]]$bic/ allmods[[s-1]]$bic),1)
@@ -294,6 +237,7 @@ if(s%%10==0){
         
 }#end sampling loop
 
+###post-processing for simulation evaluaiton
 
 allmods = allmods[2:length(allmods)]
 effects = effects[2:length(effects)]
@@ -350,7 +294,7 @@ acc = sum(unlist(extract(chains,'acc')))
 bound = sum(unlist(extract(chains,'bound')))
 rm(chains)
 
-##post-processing --- best model
+##post-processing --- identify best model
 bics=unlist(lapply(allmods,FUN=function(x) x$bic))
 bics_prime=unlist(lapply(allmods,FUN=function(x) x$bic_prime))
 r2=unlist(lapply(allmods,FUN=function(x) mean(x$r2)))
@@ -360,13 +304,12 @@ best=which(bics_prime==min(bics_prime))
 library(ggplot2)
 library(gridExtra)
 
-#load(paste0(datdir,'luo_sim_fits.RData'))
+#load data
 load(paste0(datdir,'nsim_fits.RData'))
 
 best.plt = list()
 preds = list()
 
-#for(d in c('a','p','c')){
 for(d in c('a','p','c')){
   if(length(effects[[best]][[d]])==0){
     effects[[best]][[d]]=matrix(0,1000,20)
@@ -380,26 +323,14 @@ for(d in c('a','p','c')){
   rng=apply(effects[[best]][[d]],2,quantile,c(0.025,0.975))
   preds[[d]]$up = rng[2,]
   preds[[d]]$down = rng[1,]
-  #s1-s4 are for scenarios --- needs to match with y1-y4
   preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
   
   preds[[d]]$id=unique(tdat[,d])[order(pltdat[[d]]$id)]
-  #preds[[d]]=preds[[d]] %>% arrange(id)
-  
-  
+
 }
 
 
-##post-processing -- model averaging
-#averaging algorithm from ... eq 35 from Rafferty SMR
-#http://scicomp.stackexchange.com/questions/1122/how-to-add-large-exponential-terms-reliably-without-overflow-errors
-#http://stats.stackexchange.com/questions/249888/use-bic-or-aic-as-approximation-for-bayesian-model-averaging
-#fixing overflow issue from suggestion above after logging to take difference
-
-#w = exp(-.5*bics)/sum(exp(-.5*bics)))
-#w_prime=exp(-.5*bics_prime)/sum(exp(-.5*bics_prime))
-
-#sbics = bics[order(bics)][1:10]
+##post-processing -- model averaging characteristics
 
 k=min(bics)
 d=-.5*(bics-k)
@@ -413,19 +344,19 @@ w_prime=exp(d)/sum(exp(d))
 #add weight to apc windows dataframe
 win$wt=w; win$w_prime=w_prime; win$r2=r2; win$bic=bics; win$bic_prime=bics_prime
 win$rmse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse))) 
-#inverse weight by rmse (larger values are smaller weights)
+
+#inverse weight by rmse (larger values are smaller weights--test for ML feel)
 win$rmsewt = 1/win$rmse/sum(1/win$rmse)
 win$mse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse^2))) 
 win$msewt=1/win$mse/sum(1/win$mse)
 
 win$modnum=1:nrow(win)
 
-#select weight
-#use.wt='rmsewt'
+#select weight for model averaging
 use.wt='wt'
 
 #generate sims data if it doesn't exist
-#place summary, including pvalues, summary stats, estimates, and true beta...
+#place summary, including pvalues, summary stats, estimates, and true beta into save file
 srf = paste0(outdir,'simres.RData')
 if(!file.exists(srf)){
   simres = list()
@@ -436,7 +367,7 @@ if(!file.exists(srf)){
   simnum = length(simres)+1
 }
 
-#incomplete list... others self-explanatory
+#incomplete list of effects list returned ... others self-explanatory
 tempsim = list(tbeta = NULL, #true beta
                r2 = NULL, #summary of r2 values
                bic = NULL, #summar of BIC values
@@ -469,6 +400,9 @@ for(l in seq_along(effects)){
     }
   }
 }
+
+#####
+#identify funcitons for preparing weighted statistics from the posterior samples
 
 wtmn=function(l,var,w){
   #makes weighted mean
@@ -524,7 +458,8 @@ preds[[d]]$m_up=rowSums(
        
 }
 
-#now = Sys.time()
+#######
+#restart cluster to draw posterior samples using weights
 
 cl <- makeCluster(mc <- getOption("cl.cores", 4))
 clusterExport(cl=cl, varlist=c("win", "tdat","allmods",'use.wt'))
@@ -556,8 +491,6 @@ post_chains=do.call(base::c,parLapply(cl=cl,1:4,draw_post))
 #end cluster
 stopCluster(cl)
 
-#print(Sys.time()-now)
-
 ytilde = do.call(cbind,post_chains)
 rm(post_chains)
 
@@ -565,7 +498,7 @@ print('Finalize post-processing, and output results...')
 
 sink(paste0(outdir,'mean-fit-posterior-pval.txt'),type=c('output','message'))
 
-#omnibus bayesian pvalues
+#calculate omnibus bayesian pvalues
 #print('Summary of acutal to posterior')
 tempsim$datsum = summary(tdat[,dv])
 tempsim$ppdsum = summary(as.vector(ytilde))
@@ -581,12 +514,7 @@ print(tempsim$pvals[['omnibus']])
 
 sink()
 
-#sum(apply(ytilde,2,max)<max(tdat[,dv]))/ncol(ytilde)
-#sum(apply(ytilde,2,min)>min(tdat$y2))/ncol(ytilde)
-
-#bayesian p-values by period 
-
-#print('period pvalues')
+#calculate bayesian p-values by period 
 actual.period = aggregate(tdat[,dv],by=list(tdat$p),mean)
 ytilde.period =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$p),mean)[[2]]
@@ -597,10 +525,7 @@ tempsim$pvals[['p']] =
     sum(ytilde.period[i,]>actual.period[i,2])/ncol(ytilde)
   )
 
-
-#bayesian p-values by cohort 
-#print('cohort pvalues')
-
+#calculate bayesian p-values by cohort 
 actual.cohort = aggregate(tdat[,dv],by=list(tdat$c),mean)
 ytilde.cohort =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$c),mean)[[2]]
@@ -611,8 +536,7 @@ tempsim$pvals[['c']] =
   )
 
 
-#bayesian p-values by age 
-#print('age pvalues')
+#calculate bayesian p-values by age 
 actual.age = aggregate(tdat[,dv],by=list(tdat$a),mean)
 ytilde.age =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$a),mean)[[2]]
@@ -622,6 +546,8 @@ tempsim$pvals[['a']] =
     sum(ytilde.age[i,]>actual.age[i,2])/ncol(ytilde)
   )
 
+
+#calculate p-values and coverage statistics from posterior predictive data
 predy.age = apply(ytilde.age,1,function(x)
   c(mean=mean(x),up=quantile(x,0.975),low=quantile(x,0.025)))
 predy.age = as.data.frame(t(predy.age))
@@ -637,26 +563,23 @@ predy.cohort = apply(ytilde.cohort,1,function(x)
 predy.cohort = as.data.frame(t(predy.cohort))
 predy.cohort$c = c(1:nrow(predy.cohort)); colnames(predy.cohort) = c('mean','up','low','c')
 
-
 preda = ggplot(predy.age,aes(x=a,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=a,y=tdat[,dv],group=a),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
-
-#Sys.sleep(5)
 
 predp = ggplot(predy.period,aes(x=p,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=p,y=tdat[,dv],group=p),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
-#Sys.sleep(5)
-  
 predc = ggplot(predy.cohort,aes(x=c,y=mean)) + 
   geom_boxplot(data=tdat, aes(x=c+20,y=tdat[,dv],group=c),alpha=.05) +
   geom_line() + 
   geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
 
+
+#various fit plots
 pdf(file=paste0(imdir,'comp-post.pdf'))
 
 grid.arrange(preda + theme_minimal(),
@@ -674,3 +597,5 @@ tempsim$bic = summary(bics)
 #save summary of simulation data
 simres[[simnum]] = tempsim
 save(simres,file=srf)
+
+##end file

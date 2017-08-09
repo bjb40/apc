@@ -282,16 +282,14 @@ lin_gibbs = function(y,x){
   res=residuals(m)
   n=length(y)
   
-  #simulate sigma from inverse gamma marginal -- inefficient!
-  #s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(residuals(lm(y~x-1)))%*%residuals(lm(y~x-1)))
+  #simulate sigma from inverse gamma marginal
   s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(res)%*%res)
   
   #set ppd
   ppd = matrix(0,iter,length(y))
-  
-  #simulate beta from mvn
-  #if you can vetorize this you will speed up!!
+
   for (i in 1:iter){
+    #simulate beta from mvn
     b[i,]=pars+t(rnorm(length(pars),mean=0,sd=1))%*%chol(s2[i]*xtxi)
     yhat = x %*% b[i,]
     sse = sum((y-(yhat))^2)
@@ -299,9 +297,6 @@ lin_gibbs = function(y,x){
     r2[i] = 1-(sse/sst)
     rmse[i] = sqrt(sse/n)
     ll[i]=sum(dnorm(y,mean=yhat,sd=s2[i],log=TRUE))
-    
-    #ppd[i,] = yhat + rnorm(length(y),mean=0,sd=s2[i])
-    
   }
   
   colnames(b) = colnames(x)
@@ -315,10 +310,7 @@ lin_gibbs = function(y,x){
   bic_prime=n*log(1-mean(r2))+(ncol(x)-1)*log(n)
   #bic equation ...eq 23 http://www.stat.washington.edu/raftery/Research/PDF/kass1995.pdf
   bic=-2*mean(ll)+log(n)*ncol(x)
-  #bic equation from... [wikepedia]
-  #bic=-2*mean(ll)+ncol(x)*(log(n-log(2*pi))) -- large n .. ?
-  #bic=log(n)*ncol(x)-2*mean(ll)
-  
+
   #sigma is poorly named
   return(list(betas=b,
               yhat=yhat,
@@ -333,18 +325,40 @@ lin_gibbs = function(y,x){
 }#end linear gibbs
 
 
-#dirichelet sampler
+#@@@@@@@@@@@@@@@@@@@@@
+#Functions/objects 
+#@@@@@@@@@@@@@@@@@@@@@
 
-#higher alpha leads to higher probability of lower values
-#alpha of 1 is equal probability across all draws
-stick_draw = function(num.vals, alpha) {
-  betas = rbeta(num.vals, 1, alpha)
-  stick.to.right = c(1, cumprod(1 - betas))[1:num.vals]
-  weights = stick.to.right * betas
-  weights
+rnd = function(db,rd){
+  # rounds input to preserve leading zeros
+  #
+  # Args:
+  #   db: an object with numeric types
+  #   rd: length to round (including leading zeros, default=3)
+  #
+  # Returns:
+  #   an object of of db translated to characters with leading zeros
+  
+  if(missing(rd)){rd=3}
+  rdl=paste0('%.',rd,'f')
+  return(sprintf(rdl,round(db,digits=rd)))
 }
 
-
+sig = function(pv){
+  # returns stars based on pvalue
+  #
+  # Args:
+  #   pv: a p-value
+  #
+  # Returns:
+  #   a string with stars for values * <.05 **<.01 *** < .001
+  s=' '
+  if(length(pv)>0){
+    if(pv<.001){s='***'} else if(pv<.01){s='**'} else if (pv<.05){s='*'} else if (pv<.1){s='+'}
+  }
+  return(s)
+  
+}
 
 
 
