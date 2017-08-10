@@ -23,8 +23,11 @@ load(paste0(outdir,'simres.RData'))
 simres=simres[extract('samp')>=1000 & extract('bound')<.25]
 simres=simres[1:6]
 
-print(unlist(extract('acc')))
-extract('acc')
+deleffs = apply(extract('tbeta'),1,function(x) any(x==0))
+
+#print(unlist(extract('acc')))
+#extract('acc')
+
 
 library(reshape2)
 pvals=extract('pvals',as.df=FALSE,unlist=FALSE)
@@ -94,31 +97,32 @@ plt_fit = function(simnum,recenter=FALSE,legend=FALSE){
 pred = simres[[simnum]]$preds
 if(recenter){pred=lapply(pred,recenter)} #need fixed b/c first is not always continuous
 df=do.call(rbind,pred)
-df$type=substr(rownames(df),1,1)
+df$type=substr(rownames(df),1,1)  
 
 if(legend){
   ls = c('1' = 'Actual', '2' = 'Estimated')
-  
-df$lty1 = as.factor(ls[1])
-df$lty2 = as.factor(ls[2])
-plt=ggplot(df,aes(x=id,y=actual,linetype=lty1)) + 
-  labs(linetype='') +
-  geom_line(aes(y=m_est,linetype=lty2))
-  
+  df$lty1 = as.factor(ls[1])
+  df$lty2 = as.factor(ls[2]) 
+
+  plt=ggplot(df,aes(x=id,y=actual,linetype=lty1)) + 
+    labs(linetype='') +
+    geom_line(aes(y=m_est,linetype=lty2))
+
+
 } else{
   plt=ggplot(df,aes(x=id,y=actual)) +
-    geom_line(aes(y=m_est))
+    geom_line(aes(y=m_est),lty=2)
   
 }
 
 plt = plt + geom_line() +
   #geom_point(aes(y=est), alpha=0.25) +
   #geom_errorbar(aes(ymin=down,ymax=up), alpha=0.5) +
-  geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25) +
+  geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25, show.legend=FALSE) +
   facet_grid(.~type,scales='free_x') +
   theme_minimal() +
   ylab('Effect') +
-  xlab('APC Value') 
+  xlab('APC Value')  
 
 
 return(plt)
@@ -169,7 +173,8 @@ rpvd = rpv[,'range.pval']
 
 fdat = data.frame(ol.adj,ol.unadj,opvd,avpd,rpvd,
                   samp=extract('samp'),bound=extract('bound'),
-                  r2=extract('r2')[,'Median'],acc=extract('acc'))
+                  r2=extract('r2')[,'Median'],acc=extract('acc'),
+                  deleffs)
 
 r = fdat %>% 
   dplyr::select(opvd,avpd,rpvd) %>% 
@@ -193,9 +198,28 @@ plts2 = lapply(plts2,function(x) x+theme_void())
 
 library(gridExtra)
 
+pdf(paste0(imdir,'all6_fits.pdf'))
   grid.arrange(grobs=plts2,nrow=3)
-
-##output table
+dev.off()
+  
+##output tables
 library(knitr)
 
-tb = extract('tbeta')
+tb = apply(extract('tbeta'),2,rnd)
+sink(paste0(outdir,'tables.md'))
+  cat('\n\nTable __. Effects Used to Simulate Data.\n\n')
+  print(kable(tb))
+sink()
+
+fd=fdat %>%
+  mutate(Prop.Out = 1-ol.adj) %>%
+  dplyr::select(Prop.Out,opvd,samp,bound,r2,acc) %>%
+  mutate_at(vars(-samp),funs(rnd))
+
+#id effects t
+fd$del.eff = deleffs
+
+sink(paste0(outdir,'tables.md'),append=TRUE)
+  cat('\n\nTable __. Simulation Results.\n\n')
+  print(kable(fd))
+sink()
