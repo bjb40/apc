@@ -7,7 +7,17 @@ rm(list=ls())
 source('config~.R')
 
 #previously cleaned data for gender egalitarian project
-dat = read.csv("H:/projects/gender_egal/output/private~/subdat.csv") %>%
+dat.f = "H:/projects/gender_egal/output/private~/subdat.csv"
+
+if(file.exists(dat.f)){
+  dat = read.csv(dat.f)
+  #save object for runing on the server
+  save(dat,file=paste0(outdir,'~dat.RData')) #~ keeps it from pushing to git
+} else{
+  load(paste0(outdir,'~dat.RData'))
+}
+
+dat = dat %>%
   mutate(happy=3-happy,
          fechld = 4-fechld,
          fefam = fefam-1,
@@ -20,25 +30,28 @@ dat = read.csv("H:/projects/gender_egal/output/private~/subdat.csv") %>%
 
 #limit to complete cases // inlcude educaton only as covariate
 dat = dat %>%
-  dplyr::select(happy,age,year,birthyear,female,race,educ)
+  dplyr::select(egal,age,year,birthyear,female,race,educ)
 
 t=nrow(dat)
 
 dat = dat[complete.cases(dat),]
 
-remain = t- nrow(dat)
-cat('Proportion non-missing:',remain/t)
+cat('Proportion non-missing:',nrow(dat)/t)
 
-#y = dat$egal
-y = dat$happy
-allmods=list() #may run into size constraints/may need to limit to best mods... 
-effects=xhats=ppd=list()
-tm=Sys.time()
-avtm=0
 
-#draw_chains = function(...){
-#   source('config~.R')
-  
+library(parallel)
+
+
+draw_chains = function(...){
+   source('config~.R')
+
+  y = dat$egal
+  #y = dat$happy
+  allmods=list() #may run into size constraints/may need to limit to best mods... 
+  effects=xhats=ppd=list()
+  tm=Sys.time()
+  avtm=0
+    
 
 window.sample=function(var,alph){
   #input is continuous of a,p,c
@@ -83,7 +96,7 @@ dat = dat %>%
          c=birthyear)
 
 #set of numbers of random samples
-n.samples=150
+n.samples=250
 
 #holder df for model summary data 
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
@@ -95,8 +108,6 @@ names(dl) = d
 
 #set starting values
 all.alphas = lapply(d,function(x) data.frame(t(rep(dl[x]/2,length(unique(dat[,x]))))))
-#all.alphas = lapply(d,function(x) data.frame(rep(1,length(unique(dat[,x])))))
-
 
 names(all.alphas) = d #names(all.nwins) = d
 
@@ -112,14 +123,10 @@ for(s in 2:n.samples){
   x=dat[,c('a','p','c')]
 
   all.alphas= lapply(all.alphas, function(x)
-    rbind(x,x[s-1,]+rnorm(ncol(x),mean=0,sd=1)))
-  
-  #all.alphas= lapply(all.alphas, function(x)
-  #  rbind(x,runif(ncol(x),0,10)))
-  
+    rbind(x,x[s-1,]+rnorm(ncol(x),mean=0,sd=0.5)))
+
   for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
   
-  #if(any(unlist(all.alphas)<0 | any(unlist(all.nwins)<2))){
   if(any(unlist(all.alphas)<0)){
     
     bound=bound+1
@@ -199,7 +206,7 @@ for(s in 2:n.samples){
   
   
   blockdat=lapply(x,scopedummy)
-  blockdat$p = scopedummy(w=x$p,unique.vals=unique(dat$p))
+  #blockdat$p = scopedummy(w=x$p,unique.vals=unique(dat$p))
   blockdat$a = relevel(blockdat$a,ref=a.b)
   blockdat$p = relevel(blockdat$p,ref=p.b)
   blockdat$c = relevel(blockdat$c,ref=c.b)
@@ -239,17 +246,15 @@ for(s in 2:n.samples){
   
   #selection criterion
   
-  #bayes factorf approximation
+  #bayes factor approximation
   bf=exp((allmods[[s]]$bic-allmods[[s-1]]$bic)/2)
   R = min(1,bf)
-  #R = min((allmods[[s]]$bic/ allmods[[s-1]]$bic),1)
   #print(R)
   if (R < runif(1)){
     acc = acc+1
   } else {
     
     for(d in seq_along(all.alphas)){
-      #all.nwins[[d]][s]=all.nwins[[d]][s-1]
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
     }
     
@@ -279,188 +284,23 @@ res = list(
   bound=bound
 )
 
-#return(res)
+return(res)
 
-#} #end draw chains
-
-allmods = allmods[2:length(allmods)]
-
-bics=unlist(lapply(allmods,FUN=function(x) x$bic))
-bics_prime=unlist(lapply(allmods,FUN=function(x) x$bic_prime))
-r2=unlist(lapply(allmods,FUN=function(x) mean(x$r2)))
-
-#NEED TO FIND WHY ERROR AND FIX
-best=which(bics_prime==min(bics_prime))
-if(is.null(effects[[best]])){best=3}
+} #end draw chains
 
 
-library(ggplot2)
-library(gridExtra)
 
-best.plt = list()
-preds = list()
+#define cluster to draw samples
+cat('\n\nBegin drawing chains...')
 
-for(d in c('a','p','c')){
-#for(d in c('a','p','c')){
-#  if(length(effects[[best]][[d]])==0){
-#    effects[[best]][[d]]=matrix(0,1000,20)
-#    if(d == 'c'){
-#      effects[[best]][[d]]=cbind(effects[[best]][[d]],matrix(0,1000,19))
-#    }
-#  }
-  
-  preds[[d]]=as.data.frame(apply(effects[[best]][[d]],2,mean))
-  colnames(preds[[d]])='est'
-  rng=apply(effects[[best]][[d]],2,quantile,c(0.025,0.975))
-  preds[[d]]$up = rng[2,]
-  preds[[d]]$down = rng[1,]
-  #s1-s4 are for scenarios --- needs to match with y1-y4
+cl <- makeCluster(mc <- getOption("cl.cores", 4))
+clusterExport(cl=cl, varlist=c("dat"))
+chains=do.call(list,parLapply(cl=cl,1:4,draw_chains))
 
-  #pldat doesn't exist -- need to figure about ordering
-  preds[[d]]$id=unique(dat[,d])[order(unique(dat[,d]))]
-  #preds[[d]]=preds[[d]] %>% arrange(id)
+#end cluster
+cat('\n\nEnd drawing chains...')
+stopCluster(cl)
 
-}
+save.image(file=paste0(outdir,'empirical_res.RData'))
 
-
-##post-processing -- model averaging
-#averaging algorithm from ... eq 35 from Rafferty SMR
-#http://scicomp.stackexchange.com/questions/1122/how-to-add-large-exponential-terms-reliably-without-overflow-errors
-#http://stats.stackexchange.com/questions/249888/use-bic-or-aic-as-approximation-for-bayesian-model-averaging
-#fixing overflow issue from suggestion above after logging to take difference
-
-#w = exp(-.5*bics)/sum(exp(-.5*bics)))
-#w_prime=exp(-.5*bics_prime)/sum(exp(-.5*bics_prime))
-
-#sbics = bics[order(bics)][1:10]
-
-k=min(bics)
-d=-.5*(bics-k)
-w=exp(d)/sum(exp(d))
-
-k = min(bics_prime)
-d=-.5*(bics_prime-k)
-w_prime=exp(d)/sum(exp(d))
-
-
-#add weight to apc windows dataframe
-win$wt=w; win$w_prime=w_prime; win$r2=r2; win$bic=bics; win$bic_prime=bics_prime
-win$rmse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse))) 
-#inverse weight by rmse (larger values are smaller weights)
-win$rmsewt = 1/win$rmse/sum(1/win$rmse)
-win$mse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse^2))) 
-win$msewt=1/win$mse/sum(1/win$mse)
-
-win$modnum=1:nrow(win)
-
-effects = effects[2:length(effects)]
-
-#select weight
-#use.wt='rmsewt'
-use.wt='wt'
-
-for(mod in seq_along(effects)){
-  effects[[mod]]$w=win[,use.wt][mod]
-}
-
-#print weighted mean of windows...
-print(
-  apply(win[,c('a','p','c')],2,weighted.mean,w=win[,use.wt])
-)
-
-#weighted mean
-for(l in seq_along(effects)){
-  for(t in c('a','p','c')){
-    if(is.null(effects[[l]][[t]])){
-      effects[[l]][[t]] = 0
-    }
-  }
-}
-
-wtmn=function(l,var,w){
-  #makes weighted mean
-  #l is list results
-  #var is charactername
-  r=NA
-  if(length(l[[var]])==1){r=0} else{
-    r=apply(l[[var]],2,mean)*w
-  }
-  return(r)
-}
-
-wtquant=function(l,var,w,q){
-  #takes weighted mean of quantile
-  #l is list results
-  #var is charactername
-  #q is quantile
-  r=NA
-  if(length(l[[var]])==1){r=0} else{
-    r=apply(l[[var]],2,quantile,q)*w
-  }
-  return(r)
-}
-
-
-mean.plt=list()
-
-for(d in names(preds)){
-  
-  preds[[d]]$m_est =  rowSums(
-    as.data.frame(
-      lapply(effects,FUN=function(e)
-        wtmn(e,d,e$w))
-    ))
-  
-  
-  
-  preds[[d]]$m_down=rowSums(
-    as.data.frame(lapply(
-      effects,FUN=function(e)
-        wtquant(e,d,e$w,0.025))
-    )
-  )
-  
-  preds[[d]]$m_up=rowSums(
-    as.data.frame(lapply(
-      effects,FUN=function(e)
-        wtquant(e,d,e$w,0.975))
-    )
-  )
-  
-  
-  
-}
-
-
-df = do.call(rbind,preds)
-df$type=substr(rownames(df),1,1)
-
-b.plt=ggplot(df,aes(x=id,y=est)) +
-  geom_line(alpha=0.5) +
-  geom_ribbon(aes(ymin=down,ymax=up), alpha=0.5)  +
-  facet_grid(.~type,scales='free_x') +
-  theme_minimal() +
-  ylab('Effect') +
-  xlab('APC Value')
-
-print(b.plt)
-
-m.plt=ggplot(df,aes(x=id,y=m_est)) +
-  geom_line() +
-  geom_ribbon(aes(ymin=m_down,ymax=m_up), alpha=0.25) +
-  facet_grid(.~type,scales='free_x') +
-  theme_minimal() +
-  ylab('Effect') +
-  xlab('APC Value')
-
-print(m.plt)
-
-save(allmods,
-     all.alphas,
-     effects,win,
-     b.plt,
-     n.samples,
-     bound,
-     acc,
-     file=paste0(outdir,'empirical_res.RData'))
 
