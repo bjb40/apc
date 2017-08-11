@@ -275,7 +275,7 @@ lin_gibbs = function(y,x){
   
   rmse=ll=r2=s2=matrix(1,iter)
   b= matrix(0,iter,ncol(x))
-  yhat=matrix(0,length(y))
+  yhat=matrix(iter,length(y))
   xtxi = solve(t(x)%*%x,tol=1e-22)
   m=lm(y~x-1)
   pars=coefficients(m)
@@ -291,7 +291,7 @@ lin_gibbs = function(y,x){
   for (i in 1:iter){
     #simulate beta from mvn
     b[i,]=pars+t(rnorm(length(pars),mean=0,sd=1))%*%chol(s2[i]*xtxi)
-    yhat = x %*% b[i,]
+    yhat[i,] = x %*% b[i,]
     sse = sum((y-(yhat))^2)
     sst = sum((y-mean(y))^2)
     r2[i] = 1-(sse/sst)
