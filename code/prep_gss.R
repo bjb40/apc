@@ -206,7 +206,9 @@ for(s in 2:n.samples){
   
   
   blockdat=lapply(x,scopedummy)
-  #blockdat$p = scopedummy(w=x$p,unique.vals=unique(dat$p))
+  #this is necessary because year values (p) are not contiguous; 
+  #scopedummy assume coniguous if unique.vals is not provided...
+  blockdat$p = scopedummy(w=x$p,unique.vals=unique(dat$p))
   blockdat$a = relevel(blockdat$a,ref=a.b)
   blockdat$p = relevel(blockdat$p,ref=p.b)
   blockdat$c = relevel(blockdat$c,ref=c.b)
