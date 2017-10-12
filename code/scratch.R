@@ -45,7 +45,7 @@ sigma = do.call(rbind,lapply(allmods,function(x) x$sigma))
 samps = sample(1:length(allmods),1000,replace=TRUE,prob=use.wt)
 #not quite right, b/c has error in yhat
 yt.m = vector(mode='numeric',length=length(samps))
-for(s in seq_along(ytilde)){
+for(s in seq_along(yhat)){
   ss = sample(1:1000,1) #random draw from gibbs
   yt = rnorm(nrow(dat),mean=yhat[,samps[s]],sd=sigma[samps[s],ss]) #ppd draw
   yt.m[s] = mean(yt) #mean
