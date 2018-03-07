@@ -3,11 +3,7 @@
 #
 #Bryce Bartlett
 
-library(MCMCpack)
-library(ggplot2)
-library(dplyr)
-
-#make an S3 object: 
+#make an S3 object:
 #http://www.cyclismo.org/tutorial/R/s3Classes.html#memory-management
 
 window = function(var,winlength,breaks){
@@ -17,27 +13,27 @@ window = function(var,winlength,breaks){
   #       winlength = number identifying width of windows
   #       breaks = vector of breaks (like cut in base)
   #       can only provide 1 winlenth or breaks
-  
+
   #check and throw errors
   if(missing(winlength)){
     winlength=NA
   }
-  
+
   if(missing(breaks)){
     nobreak=TRUE
   } else{nobreak=FALSE}
-  
+
   if(nobreak & is.na(winlength)){
     stop("
 Must specify either a window length (winlength)
 or vector of breaks (breaks -- works like base cut)")
   }
-  
+
   #consider warning for small cell values
   #consider error for out-of-range window or break sets
-  
+
   r=range(var)
-  
+
 if(!is.na(winlength)){
   w=winlength
   #full possibility
@@ -50,17 +46,17 @@ if(!is.na(winlength)){
     if(is.na(p.break)){p.break=r[2]}
     breaks=append(breaks,p.break)
   }
-}#end winlength 
+}#end winlength
 
   c=cut(var,breaks=breaks)
   attr(c,'range') = r
   attr(c,'breaks') = breaks
   #inherit the name???
-  
+
   class(c) = append(class(c),'window')
-  
+
   return(c)
-  
+
 }
 
 scopedummy=function(w,unique.vals=NULL){
@@ -70,7 +66,7 @@ scopedummy=function(w,unique.vals=NULL){
   #i.e. 1,2,3,4,5,6 with two windows output two factors
   # 1,1,1,2,2,2
   #it can supply unique values, otherwise, it presumes continuous
-  
+
   UseMethod('scopedummy',w)
 
 }
@@ -89,7 +85,7 @@ scopedummy.window = function(w,unique.vals=NULL) {
   } else {
     span=unique.vals
   }
-  
+
   f=cut(span,breaks=attr(w,'breaks'))
   return(f)
 }
@@ -126,7 +122,7 @@ apc_lm = function(formula,data,age,per,coh,windows) {
   #            if empty, will pick random windows min=3,max=max(variable))
   #
   # Output
-  #   list including 
+  #   list including
   #   (1) effects =  ols estimates from window model
   #   (2) smallblock = block APC estimates
   #   (3) linear = linearlized block estimates (cubic)
@@ -134,11 +130,11 @@ apc_lm = function(formula,data,age,per,coh,windows) {
   #@@@@
   #input checks
   no.age=no.period=no.cohort=FALSE
-  
+
   if(missing(age)){
     no.age=TRUE
     age='age'
-  } 
+  }
   if(missing(per)){
     no.period=TRUE
     per='period'
@@ -147,7 +143,7 @@ apc_lm = function(formula,data,age,per,coh,windows) {
     no.cohort=TRUE
     coh='cohort'
   }
-  
+
   if(sum(no.period,no.cohort,no.age)>1){
     stop('Must specify 2 of 3 required estimates: age, period, or cohort.')
   } else if(no.age){
@@ -157,14 +153,14 @@ apc_lm = function(formula,data,age,per,coh,windows) {
   } else if(no.cohort){
       data[,coh]=data[,per]-data[,age]
   }
-  
-  
-  
+
+
+
   #@@@@
   #window check
   if(missing(windows)){
     windows=list(age=0,period=0,cohort=0)
-    
+
     #id maximum window for constraint(min is 3)
     max_w=function(var){
       r=range(var)
@@ -173,9 +169,9 @@ apc_lm = function(formula,data,age,per,coh,windows) {
     windows$age=round(runif(1,3,max_w(data[,age])))
     windows$period=round(runif(1,3,max_w(data[,per])))
     windows$cohort=round(runif(1,3,max_w(data[,coh])))
-    
+
   }
-  
+
   #@@@@
   #build model matrix from window constraints
   wins=list(
@@ -183,26 +179,26 @@ apc_lm = function(formula,data,age,per,coh,windows) {
     p=window(data[,per],winlength=windows$period),
     c=window(data[,coh],winlength=windows$cohort)
   )
-  
+
 
   ndat=data[,!colnames(data) %in% c(age,per,coh)]
   ndat=cbind(ndat,wins$a,wins$p,wins$c)
   colnames(ndat)[-1:(3-ncol(ndat))] = c(age,per,coh)
-  
+
   blockdat=lapply(wins,scopedummy); names(blockdat)=c(age,per,coh)
-  
+
   #@@@@
   #estimate OLS model based on window constraints
-  
+
   results=lm(formula,data=ndat)
-  
+
   #@@@@
   #prepare small block estimates
-  
+
   b=coefficients(results)
   cov=vcov(results)
-  
-  predat=lapply(blockdat,FUN=function(x) 
+
+  predat=lapply(blockdat,FUN=function(x)
     model.matrix(~.,data=as.data.frame(x)))
 
   blockeff=list(beta=list(),cov=list())
@@ -213,28 +209,28 @@ apc_lm = function(formula,data,age,per,coh,windows) {
      blockeff[['beta']][[eff]] = b [grepl(paste0(eff,'|Intercept'),names(b))]
      blockeff[['cov']][[eff]] = cov[grepl(paste0(eff,'|Intercept'),rownames(cov)),
             grepl(paste0(eff,'|Intercept'),colnames(cov))]
-  
+
   predict[['est']][[eff]]=predat[[eff]] %*% blockeff[['beta']][[eff]]
-  
+
   #this is _assuming_ at default (left out) variables
   #should re-estimate based on means??
-  
+
   predict[['cov']][[eff]] = predat[[eff]] %*% blockeff[['cov']][[eff]] %*% t(predat[[eff]])
 
   beta.hat[[eff]] = data.frame(cohort=expand(ndat[,eff]),
                         est=predict[['est']][[eff]],
                         se=sqrt(diag(predict[['cov']][[eff]])))
   }
-  
-  
-  
-    
+
+
+
+
   #@@@@
   #prepare linear estimates(cubic)
-  
+
   #@@@@
   #return
-  
+
   return(
     list(
       newdat=ndat,
@@ -242,7 +238,7 @@ apc_lm = function(formula,data,age,per,coh,windows) {
       block.eff=beta.hat
     )
   )
-  
+
 }
 
 plt = function(ols,varnames){
@@ -250,19 +246,19 @@ plt = function(ols,varnames){
   #and plots them in a panel of 3
   #dependency -- ggplot2 (can remove for package)
   #
-  #Input: 
+  #Input:
   #     ols=lm object
   #     varnames=charater vector (1-3) identifying
   #     variablenames for age period and cohort (in that order)
   #     This will work for prefixes...
   #
   #Output: list of ggplot objects
-  
-  #select coefficients from 
+
+  #select coefficients from
   b = coefficients(ols)
-  
+
   return(b)
-  
+
 }
 
 
@@ -272,61 +268,67 @@ plt = function(ols,varnames){
 
 lin_gibbs = function(y,x){
   iter = 1000
-  
+
   rmse=ll=r2=s2=matrix(1,iter)
   b= matrix(0,iter,ncol(x))
-  yhat=matrix(iter,length(y))
+  #ytilde=yhat=matrix(0,iter,length(y))
   xtxi = solve(t(x)%*%x,tol=1e-22)
   m=lm(y~x-1)
   pars=coefficients(m)
   res=residuals(m)
   n=length(y)
-  
+
   #simulate sigma from inverse gamma marginal
   s2 = 1/rgamma(iter,nrow(x)-ncol(x)/2,.5*t(res)%*%res)
-  
+
   #set ppd
   ppd = matrix(0,iter,length(y))
 
   for (i in 1:iter){
+    #print(i)
     #simulate beta from mvn
     b[i,]=pars+t(rnorm(length(pars),mean=0,sd=1))%*%chol(s2[i]*xtxi)
-    yhat[i,] = x %*% b[i,]
+    yhat = x %*% b[i,]
     sse = sum((y-(yhat))^2)
     sst = sum((y-mean(y))^2)
     r2[i] = 1-(sse/sst)
     rmse[i] = sqrt(sse/n)
-    ll[i]=sum(dnorm(y,mean=yhat,sd=s2[i],log=TRUE))
+    ll[i]=sum(dnorm(y,mean=yhat[i,],sd=s2[i],log=TRUE))
   }
-  
+
   colnames(b) = colnames(x)
   ###BIC estimate for Bayes Factor (posterior probability weight)
   #p. 135 explains the differnce between bic and bic_prime
-  #bic is "overall model fit" where 
+  #bic is "overall model fit" where
   #bic prime "provides an assessment of whether the model is explaining enough
   #variation to justify the number of parameters it's using..."
   ###p. 135, Eq. 26 from Rafferty 1995 (SMR)
-  
+
   bic_prime=n*log(1-mean(r2))+(ncol(x)-1)*log(n)
   #bic equation ...eq 23 http://www.stat.washington.edu/raftery/Research/PDF/kass1995.pdf
   bic=-2*mean(ll)+log(n)*ncol(x)
 
+  #print(dim(yhat))
+
   #sigma is poorly named
   return(list(betas=b,
-              yhat=yhat,
+              y=y,
+              x=x,
+              #yhat=yhat,
               sigma=s2,
-              ytilde=yhat+rnorm(length(yhat),mean=0,sd=s2),
+              #ytilde=yhat+rnorm(length(yhat),mean=0,sd=s2),
               r2=r2,
-              rmse=rmse,
+              #rmse=rmse,
               bic=bic,
-              bic_prime=bic_prime,
-              ll=ll))
-  
+              bic_prime=bic_prime#,
+              #ll=ll
+              ))
+
 }#end linear gibbs
 
 
 #@@@@@@@@@@@@@@@@@@@@@
-#Functions/objects 
+#Misc Functions/objects
 #@@@@@@@@@@@@@@@@@@@@@
 
 rnd = function(db,rd){
@@ -338,7 +340,7 @@ rnd = function(db,rd){
   #
   # Returns:
   #   an object of of db translated to characters with leading zeros
-  
+
   if(missing(rd)){rd=3}
   rdl=paste0('%.',rd,'f')
   return(sprintf(rdl,round(db,digits=rd)))
@@ -357,7 +359,7 @@ sig = function(pv){
     if(pv<.001){s='***'} else if(pv<.01){s='**'} else if (pv<.05){s='*'} else if (pv<.1){s='+'}
   }
   return(s)
-  
+
 }
 
 

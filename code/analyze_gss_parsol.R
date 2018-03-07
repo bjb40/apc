@@ -6,7 +6,7 @@ rm(list=ls())
 source('config~.R')
 
 #load fit object -- should be chains
-load(paste0(outdir,'empirical_parsol.RData'))
+#load(paste0(outdir,'empirical_parsol.RData')) -- too big
 
 load(paste0(outdir,'~dat_parsol.RData'))
 
@@ -72,6 +72,8 @@ bics=unlist(lapply(allmods,FUN=function(x) x$bic))
 bics_prime=unlist(lapply(allmods,FUN=function(x) x$bic_prime))
 r2=unlist(lapply(allmods,FUN=function(x) mean(x$r2)))
   
+load(paste0(outdir,'part_parsol.RData'))
+
 best=which(bics_prime==min(bics_prime))
 
   
@@ -230,5 +232,5 @@ best=which(bics_prime==min(bics_prime))
   print(m.plt)
   
   #save entire environment for post-processing
-  save.image(paste0(outdir,'happy.RData'))
+  #save.image(paste0(outdir,'happy.RData'))
   
