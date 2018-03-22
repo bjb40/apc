@@ -10,7 +10,7 @@ source('config~.R')
 #extraction function --- using names
 extract = function(name,as.df=TRUE,unlist=FALSE){
   #input is a name of the simres object
-  #output is a numbered list (by simulaiont)
+  #output is a numbered list (by simulation)
   r=lapply(simres, function(s) s[[name]])
   if(as.df){r=do.call(rbind,r)}else if(unlist){r=unlist(r)}
   return(r)
@@ -21,7 +21,7 @@ load(paste0(outdir,'simres.RData'))
 
 #use first 6 sufficient simulations
 simres=simres[extract('samp')>=1000 & extract('bound')<.25]
-simres=simres[1:6]
+#simres=simres[1:6]
 
 deleffs = apply(extract('tbeta'),1,function(x) any(x==0))
 
@@ -50,7 +50,7 @@ worst=which((abs(avp-0.5))==max(abs(avp-0.5)))
 
 pv = melt(do.call(rbind,lapply(simres, function(s) s$pvals$p)))
 #box plot of p-values
-hg = ggplot(pv,aes(x=factor(Var2),y=value)) + 
+hg = ggplot(pv,aes(x=factor(Var2),y=value)) +
   geom_boxplot() +
   geom_point(aes(y=0.5,x=factor(Var2)), shape=8,color='grey',size=.25) +
   theme_classic()
@@ -63,31 +63,31 @@ print(hg)
 #have to fix recenter.... b/c the error bars shouldn't change by avg, but relative to
 #the mean... would be better if I had a diff.....
 recenter=function(df){
-  
-  delts = df %>% 
-    mutate(up = up-est, 
-           down=down-est, 
+
+  delts = df %>%
+    mutate(up = up-est,
+           down=down-est,
            m_down = m_down-m_est,
            m_up = m_up-m_est) %>%
     dplyr::select(up,down,m_up,m_down,id)
-  
+
   rownames(delts) = rownames(df)
-  
+
   mn = df %>%
     summarize_all(mean)
 
-  tst = as.data.frame(sweep(as.matrix(df),2,as.matrix(mn),FUN='-')) %>% 
+  tst = as.data.frame(sweep(as.matrix(df),2,as.matrix(mn),FUN='-')) %>%
     dplyr::select(actual,est,m_est,id)
   tst$id=tst$id + mn$id
 
   tst = merge(tst,delts,by='id')
-  
-  tst = tst %>% 
+
+  tst = tst %>%
     mutate(up=up+est,
            down=down+est,
            m_down=m_down+m_est,
            m_up = m_up+m_est)
-  
+
   return(tst)
 }
 
@@ -97,14 +97,14 @@ plt_fit = function(simnum,recenter=FALSE,legend=FALSE){
 pred = simres[[simnum]]$preds
 if(recenter){pred=lapply(pred,recenter)} #need fixed b/c first is not always continuous
 df=do.call(rbind,pred)
-df$type=substr(rownames(df),1,1)  
+df$type=substr(rownames(df),1,1)
 
 if(legend){
   ls = c('1' = 'Actual', '2' = 'Estimated')
   df$lty1 = as.factor(ls[1])
-  df$lty2 = as.factor(ls[2]) 
+  df$lty2 = as.factor(ls[2])
 
-  plt=ggplot(df,aes(x=id,y=actual,linetype=lty1)) + 
+  plt=ggplot(df,aes(x=id,y=actual,linetype=lty1)) +
     labs(linetype='') +
     geom_line(aes(y=m_est,linetype=lty2))
 
@@ -112,7 +112,7 @@ if(legend){
 } else{
   plt=ggplot(df,aes(x=id,y=actual)) +
     geom_line(aes(y=m_est),lty=2)
-  
+
 }
 
 plt = plt + geom_line() +
@@ -122,7 +122,7 @@ plt = plt + geom_line() +
   facet_grid(.~type,scales='free_x') +
   theme_minimal() +
   ylab('Effect') +
-  xlab('APC Value')  
+  xlab('APC Value')
 
 
 return(plt)
@@ -130,9 +130,9 @@ return(plt)
 
 #print(plt_fit(5))
 
-#print(plt_fit(worst)); print(plt_fit(12)); print(plt_fit(13)); 
+#print(plt_fit(worst)); print(plt_fit(12)); print(plt_fit(13));
 #print(plt_fit(13)) #yuck --- print(plt_fit(12)) // has good omnibus pval --12 has bad!!
-#print(plt_fit(14)) ##14 and 15 look good! --- i wonder if rhat would help that... 
+#print(plt_fit(14)) ##14 and 15 look good! --- i wonder if rhat would help that...
 #21 & 15 has great example of best fit versus average!!!...
 
 label_add = labs(title='Results for Bayesian Model Averaging Window Constraint APC Models.',
@@ -176,15 +176,15 @@ fdat = data.frame(ol.adj,ol.unadj,opvd,avpd,rpvd,
                   r2=extract('r2')[,'Median'],acc=extract('acc'),
                   deleffs)
 
-r = fdat %>% 
-  dplyr::select(opvd,avpd,rpvd) %>% 
+r = fdat %>%
+  dplyr::select(opvd,avpd,rpvd) %>%
   mutate(rpvd=1/rpvd)
 
 r=apply(r,2,rank)
 
 fdat$rank = rowMeans(r[,1:2])
-  
-  
+
+
 print(round(cor(fdat),3))
 
 fdatm = melt(fdat %>% dplyr::select(-samp,-ol.unadj),id='ol.adj')
@@ -193,15 +193,15 @@ ggplot(fdat,aes(y=ol.adj,x=opvd,color=acc)) +
   geom_point() +
   theme_classic()
 
-plts2=lapply(1:6,plt_fit,recenter=TRUE)
+plts2=lapply(1:length(simres),plt_fit,recenter=TRUE)
 plts2 = lapply(plts2,function(x) x+theme_void())
 
 library(gridExtra)
 
-pdf(paste0(imdir,'all6_fits.pdf'))
+pdf(paste0(imdir,'allfits.pdf'))
   grid.arrange(grobs=plts2,nrow=3)
 dev.off()
-  
+
 ##output tables
 library(knitr)
 
@@ -223,3 +223,6 @@ sink(paste0(outdir,'tables.md'),append=TRUE)
   cat('\n\nTable __. Simulation Results.\n\n')
   print(kable(fd))
 sink()
+
+
+

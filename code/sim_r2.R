@@ -2,7 +2,7 @@
 #simulates data for use in apc models
 
 #clear cache
-rm(list=ls())
+#rm(list=ls())
 source('config~.R')
 
 #tbeta defined by simulator.R
@@ -57,14 +57,17 @@ dims=c('a','p','c')
 
 for(d in dims){
   o.dims = dims[which(!dims==d)]
-  o.means=apply(dat[,o.dims],2,mean)
-  xdat=data.frame(uns[[d]],o.means[1],o.means[2]); colnames(xdat)=c(d,o.dims)
+  o.means=apply(dat[,o.dims],2,mean); 
+  xdat=data.frame(uns[[d]],o.means[1],o.means[2],
+                  row.names=NULL); 
+  colnames(xdat)=c(d,o.dims)
   xdat$a2 = xdat$a^2; xdat$p2 = xdat$p^2; xdat$c2 = xdat$c^2
   x = as.matrix(xdat)
   b = as.matrix(t.beta)[,colnames(x)]
   
   #test for matching
-  if(!all(colnames(x) == colnames(b))){stop('Problem with matrix ordering.')}
+  if(!all(colnames(x) == colnames(b))){
+    stop('Problem with matrix ordering.')}
   
   pltdat[[d]] = data.frame(
     id = uns[[d]],

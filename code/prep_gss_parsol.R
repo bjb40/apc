@@ -5,6 +5,7 @@
 rm(list=ls())
 
 source('config~.R')
+library(apcwin) #my library
 
 #previously cleaned data for gender egalitarian project
 #dat.f = "H:/projects/gender_egal/output/private~/subdat.csv"
