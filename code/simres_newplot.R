@@ -1,7 +1,7 @@
 
 require(apcwin)
 
-dts = list.files('H:/projects/apc/output/simdata/',
+dts = list.files('H:/projects/apc/output/stepsim/',
                  full.names=TRUE)
 
 ftplots = list()
@@ -41,7 +41,7 @@ ld = merge(ld,real.dat,by=c('id','dim'))
 ld = ld %>%
   mutate(ol = ifelse(s1<ll & s1>ul,1,0))
 
-summary(eff$sampobj)
+#summary(eff$sampobj)
 cat('\n\n\n\n')
 
 post.comp = length(unique(eff$sampled))
@@ -61,6 +61,12 @@ mnb = min(abic)
 awt = exp(-0.5*(abic-mnb))/sum(exp(-0.5*(abic-mnb)))
 print(round(awt,3))
 print(t.beta)
+
+if(!exists('allbetas')){
+  allbetas =  t.beta
+} else{
+  allbetas = rbind(allbetas,t.beta)
+}
 
 meancol=colMeans(eff$sampobj$summaries[eff$sampled,1:3])
 names(meancol) = paste0('wb.',names(meancol))
@@ -92,9 +98,6 @@ pdf(paste0(imdir,'new_allfits.pdf'))
   grid.arrange(grobs=ftplots)
 dev.off()
 
-View(round(rtabs,2))
-grid.arrange(grobs=ftplots)
-
 
 rtabs = as.data.frame(do.call(rbind,id_dim))
 library(knitr)
@@ -102,7 +105,9 @@ library(knitr)
 ###relation between geom_plot and posterior compostion
 #suggesting multiple targets to me...
 #v12 is overlap
-colnames(rtabs)[12:13] = c('olap','tot.breaks')
+
+nc = ncol(rtabs)
+colnames(rtabs)[(nc-1):nc] = c('olap','tot.breaks')
 
 ggplot(rtabs,aes(x=post.comp,y=olap,color=apc)) + geom_point()
 
@@ -110,6 +115,8 @@ ggplot(rtabs,aes(x=post.comp,y=olap,color=apc)) + geom_point()
 ggplot(rtabs,aes(x=tot.breaks,y=olap,color=apc)) + 
   geom_point()
 
+View(round(rtabs,2))
+grid.arrange(grobs=ftplots)
 
 sink(paste0(outdir,'sim_table.md'))
   kable(rtabs,digits=2)
@@ -151,3 +158,13 @@ for(d in names(allb)){
 #means the probability that n+1 is new effect
 brks.sum = lapply(brks,colMeans)
 
+library(reshape2)
+library(stargazer)
+tst=melt(eff$effects$c)
+tst$c = as.numeric(
+  levels(tst$variable)[tst$variable])
+
+tt=lm(value~c+I(c^2),data=tst)
+stargazer(tt,type='text')
+
+t.beta
