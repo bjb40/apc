@@ -14,6 +14,8 @@ source('config~.R')
 
 #preliminaries
 library(dplyr)
+library(apcwin)
+library(parallel)
 
 ###
 #draw random set of ages over a 
@@ -111,17 +113,6 @@ tdat$y = tdat$yhat + e
 #tdat = dat
 #tdat = dat %>% dplyr::select(-c,-a2,-p2,-c2)
 
-print(
-  summary(lm(y~a+p,data=tdat))
-)
-
-est = apcsamp(dat=tdat,dv='y',
-              cores=4,method='ml',
-              chains=4,samples=250)
-
-summary(est)
-
-effs = draw_effs(est)
 
 #save(tdat,file=paste0(datdir,'nsim.RData'))
 #pltdat=list()
