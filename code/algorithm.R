@@ -12,7 +12,7 @@ tdat$c=tdat$p-tdat$a
 dv='y1'
 actual='s1'
 
-#begin chain fuction
+#begin chain fuctiona
 draw_chains = function(...){
 
 source('config~.R')
@@ -34,7 +34,7 @@ y=tdat[,dv]
 maxc= max(tdat$c)
 minc = min(tdat$c)
 
-allmods=list() #may run into size constraints/may need to limit to best mods... 
+allmods=list() #may run into size constraints/may need to limit to best mods...
 effects=xhats=ppd=list()
 tm=Sys.time()
 avtm=0
@@ -46,7 +46,7 @@ window.sample=function(var,alph){
   #see dirichelet, e.g. for alternative algorithms
   vals=unique(var) #center on 0; assume continuous
   len=length(vals)
-  
+
   alph=unlist(alph)
 
   dp=rdirichlet(1,alph)
@@ -58,10 +58,10 @@ window.sample=function(var,alph){
     if(i==1){next}
     sb[i] = segments[i]-segments[i-1]
   }
-  
+
   #id inclusive breaks
   breaks=vals[sb>=1]
-  
+
   #because breaks are *inclusive*, must include min-1; ensure max
   if(min(breaks)>(min(var)-1)){
     breaks=c((min(var)-1),breaks)
@@ -69,7 +69,7 @@ window.sample=function(var,alph){
   if(max(breaks)<max(var)){
     breaks=c(breaks,max(var))
   }
-  
+
   wins=window(var,breaks=breaks)
 
   return(wins)
@@ -79,7 +79,7 @@ window.sample=function(var,alph){
 n.samples=100
 
 
-#holder df for model summary data 
+#holder df for model summary data
 win = data.frame(a=numeric(), p=numeric(), c=numeric())
 breaks=list(a=list(),p=list(),c=list())
 
@@ -102,20 +102,20 @@ for(s in 2:n.samples){
 
   #reset dataframe
   x=tdat[,c('a','p','c')]
-  
+
   all.alphas= lapply(all.alphas, function(x)
                     rbind(x,x[s-1,]+rnorm(ncol(x),mean=0,sd=1)))
-  
-  for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}  
+
+  for(d in seq_along(all.alphas)){rownames(all.alphas[[d]]) = 1:nrow(all.alphas[[d]])}
 
   #test for boundary constraint
   if(any(unlist(all.alphas)<0)){
-    
-    #reject  
+
+    #reject
     bound=bound+1
     out.al=sum(unlist(all.alphas)<0)
     cat('\n\nOut-of-Sample-Space Warning.\n\n')
-    
+
     #reset
     for(d in seq_along(all.alphas)){
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
@@ -133,19 +133,19 @@ for(s in 2:n.samples){
       all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
     }
   }
-  
-    
+
+
   #draw random window samples
-  x$a=window.sample(x$a,all.alphas$a[s,]) 
-  x$p=window.sample(x$p,all.alphas$p[s,]) 
-  x$c=window.sample(x$c,all.alphas$c[s,]) 
-  
+  x$a=window.sample(x$a,all.alphas$a[s,])
+  x$p=window.sample(x$p,all.alphas$p[s,])
+  x$c=window.sample(x$c,all.alphas$c[s,])
+
   #collect model data
   nr=data.frame(a=length(levels(x$a)),
                 p=length(levels(x$p)),
                 c=length(levels(x$c)))
   win=rbind(win,nr)
-  
+
   #collect window breaks data
   breaks$a[[s]]=attr(x$a,'breaks')
   breaks$p[[s]]=attr(x$p,'breaks')
@@ -153,38 +153,38 @@ for(s in 2:n.samples){
 
       #add esitmate / lin_gibbs is a bayesian gibbs sampler derived from Lynch 2007 pp. 172-173
       mnum = length(allmods)+1
-      
+
       #reassign random references to each vector
       a.lev=length(levels(x$a)); a.b = sample(1:a.lev,1)
       p.lev=length(levels(x$p)); p.b = sample(1:p.lev,1)
       c.lev=length(levels(x$c)); c.b = sample(1:c.lev,1)
-      
+
       form.c = as.formula(paste("~C(a,contr.treatment(a.lev,base=a.b))+
         C(p,contr.treatment(p.lev,base=p.b))+
         C(c,contr.treatment(c.lev,base=c.b))"))
-      
+
       xmat = model.matrix(form.c,data=x)
       m = allmods[[s]] = lin_gibbs(y=y,x=xmat)
-      
+
       #calculate grand means to evaluate conditional effects from linear model
       grand.means = data.frame(
         a = window(mean(tdat$a),breaks=attr(x$a,'breaks')),
         p = window(mean(tdat$p),breaks=attr(x$p,'breaks')),
         c = window(mean(tdat$c),breaks=attr(x$c,'breaks'))
       )
-      
+
       grand.means$a=relevel(grand.means$a,ref=a.b)
       grand.means$p=relevel(grand.means$p,ref=p.b)
       grand.means$c=relevel(grand.means$c,ref=c.b)
-      
+
       grand.means=(model.matrix(form.c,grand.means))
-      
+
       blockdat=lapply(x,scopedummy)
       blockdat$a = relevel(blockdat$a,ref=a.b)
       blockdat$p = relevel(blockdat$p,ref=p.b)
       blockdat$c = relevel(blockdat$c,ref=c.b)
-      
-      predat=lapply(blockdat,FUN=function(x) 
+
+      predat=lapply(blockdat,FUN=function(x)
         model.matrix(~.,data=as.data.frame(x)))
 
       effects[[mnum]] = xhats[[mnum]] = list()
@@ -194,7 +194,7 @@ for(s in 2:n.samples){
       for(eff in names(predat)){
         #fix colnames
         colnames(predat[[eff]]) = sub('x',eff,colnames(predat[[eff]]))
-        
+
         #calculate means for xhat, & id effects at issue
         xhat=grand.means[rep(seq(nrow(grand.means)), nrow(predat[[eff]])),]
 
@@ -202,21 +202,21 @@ for(s in 2:n.samples){
         calceff = grepl(paste0(eff,'.lev|Intercept'),colnames(xhat))
         xhat[,calceff] = predat[[eff]]
         xhats[[mnum]][[eff]] = xhat
-  
+
         effects[[mnum]][[eff]] = t(xhat %*% t(m$betas))
         colnames(effects[[mnum]][[eff]]) = paste0(eff,unique(tdat[,eff]))
       }
-      
+
       effects[[mnum]]$bic=m$bic
-      
+
         avtm=(avtm*(length(allmods)-1)+Sys.time()-tm)/length(allmods)
         tm=Sys.time()
-      
-        
+
+
         if(s==2){next} #skip because evaluations do not exist for first iteration...
-        
+
         #apply selection criterion
-        
+
         #bayes factor approximation
         bf=exp((allmods[[s]]$bic-allmods[[s-1]]$bic)/2)
         R = min(1,bf)
@@ -225,16 +225,16 @@ for(s in 2:n.samples){
         if (R < runif(1)){
           acc = acc+1
         } else {
-          
+
           for(d in seq_along(all.alphas)){
             #all.nwins[[d]][s]=all.nwins[[d]][s-1]
             all.alphas[[d]][s,]=all.alphas[[d]][s-1,]
           }
 
-          
+
         }
-        
-        
+
+
 }#end sampling loop
 
 ###post-processing for simulation evaluaiton
@@ -280,7 +280,7 @@ extract = function(l,name,as.df=FALSE){
   if(as.df){
     res=do.call(rbind,lapply(l,function(x) x[[name]]))
   }
-  
+
   return(res)
 }
 
@@ -317,14 +317,14 @@ for(d in c('a','p','c')){
       effects[[best]][[d]]=cbind(effects[[best]][[d]],matrix(0,1000,19))
     }
   }
-    
+
   preds[[d]]=as.data.frame(apply(effects[[best]][[d]],2,mean))
   colnames(preds[[d]])='est'
   rng=apply(effects[[best]][[d]],2,quantile,c(0.025,0.975))
   preds[[d]]$up = rng[2,]
   preds[[d]]$down = rng[1,]
   preds[[d]]$actual=pltdat[[d]]$s1[order(pltdat[[d]]$id)]
-  
+
   preds[[d]]$id=unique(tdat[,d])[order(pltdat[[d]]$id)]
 
 }
@@ -343,11 +343,11 @@ w_prime=exp(d)/sum(exp(d))
 
 #add weight to apc windows dataframe
 win$wt=w; win$w_prime=w_prime; win$r2=r2; win$bic=bics; win$bic_prime=bics_prime
-win$rmse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse))) 
+win$rmse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse)))
 
 #inverse weight by rmse (larger values are smaller weights--test for ML feel)
 win$rmsewt = 1/win$rmse/sum(1/win$rmse)
-win$mse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse^2))) 
+win$mse = unlist(lapply(allmods,FUN=function(x) mean(x$rmse^2)))
 win$msewt=1/win$mse/sum(1/win$mse)
 
 win$modnum=1:nrow(win)
@@ -374,7 +374,7 @@ tempsim = list(tbeta = NULL, #true beta
                pvals = NULL, #list of bayesian p-values --- omnibus + sliced
                wt = NULL, #weighting scheme
                preds = NULL, #mean and best estimates w/actual and overlap (actual can be adj)
-               ppdsum = NULL, #summary of ppd 
+               ppdsum = NULL, #summary of ppd
                datsum = NULL #summary of data
 )
 
@@ -439,7 +439,7 @@ preds[[d]]$m_est =  rowSums(
 ))
 
 
-  
+
 preds[[d]]$m_down=rowSums(
   as.data.frame(lapply(
   effects,FUN=function(e)
@@ -455,7 +455,7 @@ preds[[d]]$m_up=rowSums(
 )
 
 
-       
+
 }
 
 #######
@@ -467,20 +467,20 @@ clusterExport(cl=cl, varlist=c("win", "tdat","allmods",'use.wt'))
 draw_post=function(...){
 #draw list for posterior sample
   post.size=250
-  
+
   ytilde = matrix(as.numeric(NA),nrow(tdat),post.size)
   post.mods = base::sample(win$modnum,size=post.size,
                    replace=TRUE,prob=win[,use.wt])
-  
+
   #drawing posterior samples (with replacement)
   for(i in seq_along(post.mods)){
     i.win=win[post.mods[i],]
     modnum=i.win$modnum
-  
-    ytilde[,i] = allmods[[modnum]]$yhat + 
+
+    ytilde[,i] = allmods[[modnum]]$yhat +
       rnorm(nrow(ytilde),mean=0,sd=allmods[[modnum]]$sigma)
   }
-  
+
   return(list(ytilde))
 }
 
@@ -514,18 +514,18 @@ print(tempsim$pvals[['omnibus']])
 
 sink()
 
-#calculate bayesian p-values by period 
+#calculate bayesian p-values by period
 actual.period = aggregate(tdat[,dv],by=list(tdat$p),mean)
 ytilde.period =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$p),mean)[[2]]
 )
 
-tempsim$pvals[['p']] = 
+tempsim$pvals[['p']] =
   sapply(seq_along(actual.period[[1]]),function(i)
     sum(ytilde.period[i,]>actual.period[i,2])/ncol(ytilde)
   )
 
-#calculate bayesian p-values by cohort 
+#calculate bayesian p-values by cohort
 actual.cohort = aggregate(tdat[,dv],by=list(tdat$c),mean)
 ytilde.cohort =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$c),mean)[[2]]
@@ -536,7 +536,7 @@ tempsim$pvals[['c']] =
   )
 
 
-#calculate bayesian p-values by age 
+#calculate bayesian p-values by age
 actual.age = aggregate(tdat[,dv],by=list(tdat$a),mean)
 ytilde.age =  sapply(1:ncol(ytilde),function(i)
   aggregate(ytilde[,i],by=list(tdat$a),mean)[[2]]
@@ -563,20 +563,20 @@ predy.cohort = apply(ytilde.cohort,1,function(x)
 predy.cohort = as.data.frame(t(predy.cohort))
 predy.cohort$c = c(1:nrow(predy.cohort)); colnames(predy.cohort) = c('mean','up','low','c')
 
-preda = ggplot(predy.age,aes(x=a,y=mean)) + 
+preda = ggplot(predy.age,aes(x=a,y=mean)) +
   geom_boxplot(data=tdat, aes(x=a,y=tdat[,dv],group=a),alpha=.05) +
-  geom_line() + 
-  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
+  geom_line() +
+  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4)
 
-predp = ggplot(predy.period,aes(x=p,y=mean)) + 
+predp = ggplot(predy.period,aes(x=p,y=mean)) +
   geom_boxplot(data=tdat, aes(x=p,y=tdat[,dv],group=p),alpha=.05) +
-  geom_line() + 
-  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
+  geom_line() +
+  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4)
 
-predc = ggplot(predy.cohort,aes(x=c,y=mean)) + 
+predc = ggplot(predy.cohort,aes(x=c,y=mean)) +
   geom_boxplot(data=tdat, aes(x=c+20,y=tdat[,dv],group=c),alpha=.05) +
-  geom_line() + 
-  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4) 
+  geom_line() +
+  geom_ribbon(aes(ymin=low,ymax=up),alpha=0.4)
 
 
 #various fit plots

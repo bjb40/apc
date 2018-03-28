@@ -1,6 +1,9 @@
 #Bryce Bartlett
 #simulates data for use in apc models
 
+#################333
+#note that this refers to variables built in sim_r2!!
+
 #clear cache
 #rm(list=ls())
 source('config~.R')
@@ -33,7 +36,7 @@ tdat = lapply(p, function(y) {
 #bind
 tdat = do.call(rbind,tdat)
 
-n=nrow(dat)
+#n=nrow(tdat)
 
 ####
 #draw random effects values for various functions
@@ -47,41 +50,98 @@ a.eff = as.matrix(tdat[,c('ac','a2')]) %*%
 #range(a.eff)
 #plot(tdat$a,a.eff)
 
-draw_blocks = function(breakprob,autocorr,var){
-    #breakprob is probability of a window break between 0 and 1
-    #autocorr is an SD of effect sizes for a random walk
+#need to change the variance
+
+ar1 = function(len,autocorr,v){
+  #this simulates a stationary AR1 process with correlation autocor
+  #len is length
+  #autocor is autocorrelation
+  #v is variance: see https://stats.stackexchange.com/questions/175289/how-to-set-the-starting-value-of-simulated-arima
+  #for calculation of v
+  
+  var.beta = arima.sim(model=list(ar=autocorr),
+                       n=len)
+  
+  #vratio = v/var.beta[1]
+  var.beta=var.beta*as.vector(sqrt(v))
+  
+  return(var.beta)
+}
+
+######
+#unit tests 
+#to confirm stationary conttruction with wider variance
+"tst1 = ar1(100,0.5,1)
+  mean(tst1); var(tst1)
+  print(acf(tst1,plot=FALSE)[1])
+tst10 = ar1(100,0.5,10)
+  mean(tst10); var(tst10)
+  print(acf(tst10,plot=FALSE)[1])
+"
+
+randomwalk = function(len,v){
+  #this simulates a random walk based on the last observation
+  #len is length and v is variance
+  #NOTE that random walks have fairly high autocorrelation by nature
+  #https://stats.stackexchange.com/questions/181167/what-is-the-autocorrelation-for-a-random-walk
+  var.beta = cumsum(rnorm(len,sd=sqrt(v)))
+  return(var.beta)
+}
+
+random = function(len,beg,end){
+  #this just draws from a uniform random distribution beginning and end
+  #this is a function for uniformity with the above
+  return(runif(len,beg,end))
+}
+
+draw_blocks = function(breakyears=5,
+                       type='random',
+                       autocorr=0,
+                       var){
+    #breakyears is average length of break years (more or less)
+    #type is one of 
+    #  random-walk, ar1, or random 
+      #in all cases, effect sizes are roughly the same range as age effects
+    #autcor is autocorrelation number between 0 and 1 for stationary process
     #var is the variable to draw across rndomly
   
   
     ####autocorr ideas : https://stats.stackexchange.com/questions/29239/creating-auto-correlated-random-values-in-r
     ####also https://stats.stackexchange.com/questions/178014/generating-an-ar1-time-series-with-a-specific-autocorrelation-in-r
     #### this works well
-    "
-    x=arima.sim(model=list(ar=0.5),n=100)
-    acf(x)
-    cor(cbind(x,stats::lag(x)),use='pairwise.complete.obs')
-    "
-  
-    #returns list of (1) betas and (2) calculated effects for data in var
-  
+
   #period and cohort effects have probability of "jump" 
   #and "autocorrelation"
   #breakprob = 0.3
   #autocorr = diff(range(a.eff))/5
+  yrs = min(var):max(var)
+  breakprob = length(yrs)/breakyears/length(yrs)
   all.var = unique(var)
   #pull random breaks
   breaks.var = c(min(var)-1,
-               all.var[as.logical(
-                 rbinom(length(all.var),1,breakprob)
+                 yrs[as.logical(
+                 rbinom(length(yrs),1,breakprob)
                  )])
   #make sure it covers the whole place
   if(max(breaks.var)<max(var)){
     breaks.var = c(breaks.var,max(var))
   }
-  #draw random disturbance
-  var.beta = rnorm(length(breaks.var)-1,sd=autocorr)
-  #random walk from beginning
-  var.beta = cumsum(var.beta)
+  
+  #draw random disturbance---these are one of several choices, id'd and discussed in
+  #functions above
+  ###########
+  if(type=='random'){
+    var.beta = random(len=length(breaks.var)-1,
+                      beg=min(a.eff),
+                      end=max(a.eff))
+  } else if(type=='randomwalk'){
+    var.beta = randomwalk(len=length(breaks.var)-1,
+                          v=var(a.eff)/2)
+  } else if(type=='ar1'){
+    var.beta = ar1(len=length(breaks.var)-1,
+                   autocorr=autocorr,
+                   v=var(a.eff))
+  }
   
   ##calculate effects
   #window is a method for apcwin that creates a factor
@@ -97,19 +157,26 @@ draw_blocks = function(breakprob,autocorr,var){
 
 }
 
-pdraw = draw_blocks(breakprob=0.3,
-                    autocorr=diff(range(a.eff))/5, #1/5 of age effect
+
+###################
+#draw random effects from pre-specified list simlist
+#in simulator.R
+
+pdraw = draw_blocks(breakyears=simdims$p.blocks,
+                    type=simdims$p.type,
+                    autocorr=simdims$p.autocorr, #1/5 of age effect
                     var=tdat$p)
 
 period=pdraw$var.beta
-plot(tdat$p,pdraw$var.eff)
+#plot(tdat$p,pdraw$var.eff)
 
-cdraw = draw_blocks(breakprob=0.3,
-                    autocorr=diff(range(a.eff))/5,
+cdraw = draw_blocks(breakyears=simdims$c.blocks,
+                    type=simdims$c.type,
+                    autocorr=simdims$c.autocorr,
                     var=tdat$c)
 
 cohort=cdraw$var.beta
-plot(tdat$c,cdraw$var.eff)
+#plot(tdat$c,cdraw$var.eff)
 
 tdat$yhat = a.eff + pdraw$var.eff + cdraw$var.eff
 
