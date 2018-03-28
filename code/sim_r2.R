@@ -83,7 +83,7 @@ draw_blocks = function(breakprob,autocorr,var){
   names(var.beta) = levels(vv$v)
   
   return(list(
-    var.beta=var.beta,var.eff=var.eff))
+    var.beta=var.beta,var.eff=var.eff,breaks=breaks.var))
 
 }
 
@@ -110,8 +110,26 @@ evar=(1-r2)/r2
 e=rnorm(nrow(tdat),0,sqrt(evar))
 
 tdat$y = tdat$yhat + e
+
+tdat$pf = window(tdat$p,breaks=pdraw$breaks)
+tdat$cf = window(tdat$c,breaks=cdraw$breaks)
+
 #tdat = dat
 #tdat = dat %>% dplyr::select(-c,-a2,-p2,-c2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #save(tdat,file=paste0(datdir,'nsim.RData'))
