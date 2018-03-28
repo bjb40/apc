@@ -44,14 +44,24 @@ age = runif(1,-1,1)/10; age2=runif(1,-1,1)/10
 
 a.eff = as.matrix(tdat[,c('ac','a2')]) %*% 
   matrix(c(age,age2),2,1)
-range(a.eff)
-plot(tdat$a,a.eff)
+#range(a.eff)
+#plot(tdat$a,a.eff)
 
 draw_blocks = function(breakprob,autocorr,var){
     #breakprob is probability of a window break between 0 and 1
     #autocorr is an SD of effect sizes for a random walk
     #var is the variable to draw across rndomly
-    
+  
+  
+    ####autocorr ideas : https://stats.stackexchange.com/questions/29239/creating-auto-correlated-random-values-in-r
+    ####also https://stats.stackexchange.com/questions/178014/generating-an-ar1-time-series-with-a-specific-autocorrelation-in-r
+    #### this works well
+    "
+    x=arima.sim(model=list(ar=0.5),n=100)
+    acf(x)
+    cor(cbind(x,stats::lag(x)),use='pairwise.complete.obs')
+    "
+  
     #returns list of (1) betas and (2) calculated effects for data in var
   
   #period and cohort effects have probability of "jump" 
@@ -104,68 +114,49 @@ plot(tdat$c,cdraw$var.eff)
 tdat$yhat = a.eff + pdraw$var.eff + cdraw$var.eff
 
 
-r2=0.03
+r2=0.1
 
-evar=(1-r2)/r2
-e=rnorm(nrow(tdat),0,sqrt(evar))
+#########
+#r2 = 1- var(e)/var(y)
+#var(e) = (1-r2)*var(y)
+  #when var(y) = var(y_hat), var(e) = 0, and R^2 = 1 
+  #so var(y) is the same as var(y_hat) + var(e), that means
+#var(e) = (1-r2)*(var(y_hat) + var(e)) --- below, getting rid of variance
+#e = y_hat + e - r2*y_hat - r2*e
+#0 = y_hat -r2*y_hat - r2*e
+#r2*e = y_hat +r2*y_hat
+#e = (y_hat -r2*y_hat)/r2 
+
+yhat = var(tdat$yhat)
+evar=(yhat - r2*yhat)/r2
+e=rnorm(nrow(tdat),0,sd=sqrt(evar))
 
 tdat$y = tdat$yhat + e
 
 tdat$pf = window(tdat$p,breaks=pdraw$breaks)
 tdat$cf = window(tdat$c,breaks=cdraw$breaks)
 
-#tdat = dat
-#tdat = dat %>% dplyr::select(-c,-a2,-p2,-c2)
+#model
+tt = lm(y~a+a2+pf+cf,data=tdat)
+print(summary(tt)$r.squared)
 
+####
+#list for saving
+simdat = tdat %>% dplyr::select(a,p,c,y)
+names(pdraw$var.beta) = paste0('p',names(pdraw$var.beta))
+names(cdraw$var.beta) = paste0('c',names(cdraw$var.beta))
+age = c(age,age2); names(age) = c('cage','cage2')
+effects = c(age,pdraw$var.beta,cdraw$var.beta)
 
+##################33
+#list of things to keep
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-#save(tdat,file=paste0(datdir,'nsim.RData'))
-#pltdat=list()
-
-#pull unique data -- should make this a loop
-uns = list(
-  c = unique(dat$c), a=unique(dat$a), p=unique(dat$p)
+simulated = list(
+  simdat=simdat,
+  effects=effects,
+  p.breaks = pdraw$breaks,
+  c.breaks = cdraw$breaks
 )
 
-#need to hold means for margins 
-dims=c('a','p','c')
 
-for(d in dims){
-  o.dims = dims[which(!dims==d)]
-  o.means=apply(dat[,o.dims],2,mean); 
-  xdat=data.frame(uns[[d]],o.means[1],o.means[2],
-                  row.names=NULL); 
-  colnames(xdat)=c(d,o.dims)
-  xdat$a2 = xdat$a^2; xdat$p2 = xdat$p^2; xdat$c2 = xdat$c^2
-  x = as.matrix(xdat)
-  b = as.matrix(t.beta)[,colnames(x)]
-  
-  #test for matching
-  if(!all(colnames(x) == colnames(b))){
-    stop('Problem with matrix ordering.')}
-  
-  pltdat[[d]] = data.frame(
-    id = uns[[d]],
-    s1 = (x %*% b)[,1] 
-  )
-  
-}
 
-save(pltdat,file=paste0(datdir,'nsim_fits.RData'))
-
-#run algorithm
-#source('algorithm.R',echo=TRUE)
-#unnecessary with "simulator.R"
