@@ -30,12 +30,13 @@ true.b[['a']] = data.frame(
 true.b[['a']]$dim='a'
 
 ###p effects
-xh= data.frame(pf=scopedummy(tdat$pf))
+xh= data.frame(pf=window(unique(tdat$p),
+                         breaks=attr(tdat$pf,'breaks')))
 xh$a = mean(tdat$a); xh$a2=mean(tdat$a2)
 xh$cf = window(mean(tdat$c),breaks=cdraw$breaks)
 
 true.b[['p']] = data.frame(
-  x=min(tdat$p):max(tdat$p),
+  x=unique(tdat$p),
   m.eff = predict(tt,newdata=xh))
 true.b[['p']]$dim='p'
 
@@ -92,4 +93,6 @@ cs = colMeans(brks[['c']])
 cp = min(tdat$c):max(tdat$c) %in% simulated$c.breaks
 c.miss = mean(cs-cp)
 
+exact.miss = 1-mean(cs==cp) #what is there now -- OR
+av.miss = mean(abs(cs-cp)) #this is the total "deviance" proportion
 

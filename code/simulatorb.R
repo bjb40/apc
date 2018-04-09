@@ -1,5 +1,7 @@
 #runs 5 simulations
 
+
+
 #####check for and create simulations folder
 source('config~.R')
 if(!dir.exists(paste0(outdir,'simdata1/'))){
@@ -38,7 +40,7 @@ simtable$srmse = as.numeric(NA) #ratio of calculated rmse to est rmse
 simtable$p.catch = as.numeric(NA)
 simtable$c.catch = as.numeric(NA)
 #1:nrow(simtable)
-for(draw in 1:5){
+for(draw in 101:200){
   simdims = simtable[draw,]
   cat('Simulation',draw,'...\n')
   #funciton is nested because sources below delete all in memory
