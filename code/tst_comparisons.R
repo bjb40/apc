@@ -7,10 +7,10 @@ library(reshape2)
 library(msm)
 
 #lnum=34 #best one for hapc
-lnum =15 #15 works fine too!
+lnum =8 #15 works fine too for hapc!
 
-load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
-#load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
+#load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
+load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
 
 
 tdat = simulated$simdat
@@ -167,7 +167,7 @@ r.effs = do.call(rbind,true.b)
 #  mutate(m.eff = ifelse(dim=='a',m.eff+21,m.eff))
 
 #redraw effects... using effect coding
-effs = draw_sumeffs(effs$sampobj,tol=0.001)
+effs = draw_sumeffs(effs$sampobj,tol=0.05)
 pp = plot(effs)
 
 ages = merge(pp$data %>% filter(dim=='a'),
@@ -215,17 +215,28 @@ print(hage)
 print(wage)
 
 
-###########3
-#nonmarginal
+#############3
+#breaks for sampler...?
+wbreaks = function(dim){
+  tst = effs$effects[[dim]][,order(as.numeric(colnames(effs$effects[[dim]])))]
+  
+  delt = unlist(lapply(1:(ncol(tst)-1),FUN=function(r){
+    rw = min(
+            c(mean(tst[,r] - tst[,r+1]>0),
+              mean(tst[,r] - tst[,r+1]<0)
+              )
+            )
+    names(rw) = colnames(tst)[r]
+    return(rw)
+  }))
+  
+return(delt)
 
-#nmeffs = draw_effs(effs$sampobj,marginal=FALSE,tol=0.01)
+}
 
-#plot(nmeffs) + geom_line(data=r.effs,
-#          aes(x=x,y=m.eff),linetype=2) + 
-#  geom_line(data=pred,
-#            aes(x=x,y=fit),linetype=3) +
-#  geom_ribbon(data = pred,
-#              aes(x=x,y=fit,ymax=ul,ymin=ll),alpha=0.1) +
-#  theme_classic()
+brks = lapply(names(effs$effects),wbreaks)
+names(brks) = names(effs$effects)
 
+brks[['p']][as.character(attr(tdat$pf,'breaks'))]
+brks[['c']][as.character(attr(tdat$cf,'breaks'))]
 
