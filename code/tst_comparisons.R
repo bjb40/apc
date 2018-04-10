@@ -6,7 +6,8 @@ library(apcwin)
 library(reshape2)
 library(msm)
 
-lnum=34
+#lnum=34 #best one for hapc
+lnum =15 #15 works fine too!
 
 load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
 #load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
@@ -43,6 +44,8 @@ hapc = lmer(y~ca + I(ca^2) +
 
 hapc.effs = function(mermod,newdat){
   #mermod is fitted model, newdat is new data
+  
+  
   
   effs=simulate(mermod,
                 nsim=100,
@@ -94,36 +97,12 @@ pred = rbind(pred,hapc.effs(hapc,xm.c) %>%
 #real effects
 
 
-#model is identifiable!! (can check directly from betas..., but using scopedummy and predict)
-tdat$a2 = tdat$a^2
-
-#set mean values across all matricies
-tt = table(tdat[,c('a','p','c')])
-
-#rowSums(tt[1,,])/sum(tt[1,,])#age 18 by period
-#colSums(tt[1,,])/sum(tt[1,,]) #age 18 by cohort
-
-#these go row by column
-yearxage = apply(tt,1,rowSums) 
-cohortxage = apply(tt,1,colSums)
-cohortxyear = apply(tt,2,colSums)
-#tst = prop.table(yearxage,margin=1)
-#rowSums(tst)
-
-#structure age prediction matrix
-agemat = data.frame(a=order(unique(tdat$a)))
-agemat = merge(agemat,prop.table(t(yearxage),margin=1),
-               by.x='a',by.y='row.names')
-rr=nrow(agemat); 
-agemat = merge(agemat,prop.table(t(cohortxage),margin=1),
-               by.x='a',by.y='row.names')
-
-
 #set contrasts option; see http://faculty.nps.edu/sebuttre/home/R/contrasts.html
-options(contrasts = rep("contr.treatment",2))
-options(contrasts = rep("contr.sum",2))
+
 tdat$yc = tdat$y - mean(tdat$y)
-tt = lm(yc~ca+ca2+pf+cf,data=tdat)
+tt = lm(yc~ca+ca2+pf+cf,data=tdat,
+        contrasts=list(pf='contr.sum',
+                       cf = 'contr.sum'))
 true.b =list()
 beta = coef(tt)
 
@@ -132,37 +111,23 @@ beta = coef(tt)
 
 ###a effects -- note max is for the "omitted" category
 
-agemat.c = prop.table(table(tdat[,c('a','cf')]),margin=1)
-  class(agemat.c) = 'matrix'
-  colnames(agemat.c) = paste0('cf',1:length(levels(tdat$cf)))
-agemat.p = prop.table(table(tdat[,c('a','pf')]),margin=1)
-  class(agemat.p) = 'matrix'
-  colnames(agemat.p) = paste0('pf',1:length(levels(tdat$pf)))
-agemat = merge(agemat.c,agemat.p,by='row.names')
-agemat$a = row.names(agemat)
-
-
 xh= data.frame(a=min(tdat$a):max(tdat$a),
                pf = window(mean(tdat$p),breaks=attr(tdat$pf,'breaks')),
                cf = window(mean(tdat$c),breaks=attr(tdat$cf,'breaks'))) 
-
 
 xh$ca = xh$a-mean(tdat$a); xh$ca2 = xh$ca^2
 xm = model.matrix(~ca + ca2 + pf + cf,
                   data=xh,
                   contrasts.arg = list(cf = 'contr.sum',
                                        pf = 'contr.sum'))
-arr = colnames(xm) #to save order
 facs = grepl('cf|pf',colnames(xm))
-agemat = agemat[,colnames(xm)[facs]]
-xm = cbind(xm[,!facs],agemat)
-xm= xm[,arr]
+xm[,facs] = xm[,facs]*.5
 
 
 true.b[['a']] = data.frame(
   x=min(tdat$a):max(tdat$a),
   #m.eff = predict(tt,newdata=xh))
-  m.eff = as.matrix(xm) %*% beta[colnames(xm)])
+  m.eff = xm %*% beta[colnames(xm)])
 
 true.b[['a']]$dim='a'
 
@@ -170,8 +135,7 @@ true.b[['a']]$dim='a'
 ###p effects
 xh= data.frame(ca= 0,
                ca2 = 0,
-               pf=window(unique(tdat$p),
-                         breaks=attr(tdat$pf,'breaks')))
+               pf=scopedummy(tdat$pf,unique.vals=unique(tdat$p)))
 xm = model.matrix(~.,data=xh,
                   contrasts.arg=list(pf='contr.sum'))
 xm=xm[,2:ncol(xm)]
@@ -203,7 +167,7 @@ r.effs = do.call(rbind,true.b)
 #  mutate(m.eff = ifelse(dim=='a',m.eff+21,m.eff))
 
 #redraw effects... using effect coding
-#effs = draw_sumeffs(effs$sampobj,tol=0.05)
+effs = draw_sumeffs(effs$sampobj,tol=0.001)
 pp = plot(effs)
 
 ages = merge(pp$data %>% filter(dim=='a'),
