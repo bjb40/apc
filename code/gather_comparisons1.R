@@ -10,9 +10,10 @@ library(dplyr) #data manipulation
 library(reshape2) # data manipulation
 library(ggplot2) #plotting
 
-simdir = paste0(outdir,'simdata_hapc/')
+simdir = paste0(outdir,'simdata1/')
 resfile = paste0(simdir,'comp.csv')
-simtable = read.csv(paste0(simdir,'fullsimtable.csv'))
+simtable = read.csv(paste0(simdir,'fullsimtable.csv')) %>%
+  arrange(simnumber)
 
 sims = simtable$simnumber
 

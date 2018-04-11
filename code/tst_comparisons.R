@@ -1,6 +1,6 @@
 
 
-rm(list=ls())
+#rm(list=ls())
 source('config~.R')
 
 #dependencies
@@ -73,8 +73,9 @@ pred[['p']] = merge(pred[['p']],hapc.re,by.x='p.hf',by.y='groupID') %>%
   mutate(est = as.numeric(mean),
          ul = est + 1.96*as.numeric(sd),
          ll = mean - 1.96*as.numeric(sd),
+         se = as.numeric(sd), #bayesian estimate of se
          dim='p') %>%
-  dplyr::select(est,x,dim,ul,ll)
+  dplyr::select(est,x,dim,ul,ll,se)
 
 #cohort effects
 pred[['c']] = data.frame(
@@ -85,8 +86,9 @@ pred[['c']] = merge(pred[['c']],hapc.re,by.x='c.hf',by.y='groupID') %>%
   mutate(est = as.numeric(mean),
          ul = est + 1.96*as.numeric(sd),
          ll = mean - 1.96*as.numeric(sd),
+         se = as.numeric(sd),
          dim='c') %>%
-  dplyr::select(est,x,dim,ul,ll)
+  dplyr::select(est,x,dim,ul,ll,se)
 
 ###a effects -- fixed effects -- not held at marginals
 #because that is hella hard --- probably simulate the marginals
@@ -130,7 +132,7 @@ pred[['a']] = xh %>%
          ul = est + 1.96*se,
          ll = est - 1.96*se,
          dim='a') %>% 
-  dplyr::select(est,x,ul,ll,dim)
+  dplyr::select(est,x,ul,ll,dim,se)
   
 
 
@@ -282,14 +284,15 @@ summdat = pp$data %>%
 summdat = merge(summdat,pred %>% 
   rename(hapc.est = est,
          hapc.ul = ul,
-         hapc.ll = ll) %>%
-  dplyr::select(hapc.est,hapc.ul,hapc.ll,dim,x,dim_f))
+         hapc.ll = ll,
+         hapc.se = se) %>%
+  dplyr::select(hapc.est,hapc.ul,hapc.ll,hapc.se,dim,x,dim_f))
 
 summdat =merge(summdat, r.effs %>%
     rename(est = m.eff) %>%
     mutate(ul = est + 1.96*se,
            ll = est - 1.96*se) %>%
-  dplyr::select(est,ul,ll,dim,x,dim_f))
+  dplyr::select(est,ul,ll,dim,x,dim_f,se))
 
 ###
 #overlap
@@ -344,7 +347,9 @@ sm = summdat %>%
 
 overview = c(colMeans(overlap),colMeans(sm))
 
-#collect differences (i.e. "S", and test against window breaks...)
+"
+not sure if these add anything
+#collect differences (i.e. 'S', and test against window breaks...)
 #i.e. 1 step slope...
 s.a = do.call(rbind,tstdiff(effs))
 attr(tdat$pf,'breaks')
@@ -361,4 +366,6 @@ tdelta = merge(tdelta,s.a,by.x='dfname',by.y='row.names')
 quantile(tdelta$real.delta-tdelta$diff,probs=0.5)
 quantile(tdelta$real.delta-tdelta$diff,probs=c(0.975,0.025))
 sum(tdelta$real.delta-tdelta$diff>0)/nrow(tdelta)
+"
 
+print('done')
