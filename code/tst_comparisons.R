@@ -2,22 +2,26 @@
 
 rm(list=ls())
 source('config~.R')
-library(apcwin)
-library(reshape2)
-library(msm)
+
+#dependencies
+library(apcwin) #custom package in dev
+library(lme4) #random effects
+library(merTools) #random effects display and sampling
+library(parallel) #to speed up sampling
+library(dplyr) #data manipulation
+library(reshape2) # data manipulation
+library(ggplot2) #plotting
 
 #lnum=34 #best one for hapc
-lnum =24 #15 works fine too for hapc!
+lnum =2 #15 works fine too for hapc!
 
-#load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
-load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
+load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
+#load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
 
 
 tdat = simulated$simdat
 tdat$y = as.numeric(tdat$y)
 
-library(lme4)
-library(dplyr)
 
 #center age
 tdat = tdat %>% 
@@ -40,6 +44,9 @@ class(tdat$pf) = c(class(tdat$pf),'window')
 attr(tdat$pf,'breaks') = c(min(tdat$p)-1,
                            simulated$p.breaks[simulated$p.breaks %in% unique(tdat$p)])
 
+#can rescale; doesn't seem to fix convergence
+tdat$cal = tdat$ca/10
+tdat$cal2 = tdat$cal^2
 hapc = lmer(yc~ca + ca2 +
               p.hf + c.hf +
               (1|p.hf) + (1|c.hf),
@@ -139,6 +146,7 @@ tt = lm(yc~ca+ca2+pf+cf,data=tdat,
                        cf = 'contr.sum'))
 true.b =list()
 beta = coef(tt)
+vc = vcov(tt)
 
 #rename columns of beta ...
 
@@ -166,11 +174,12 @@ colorder = colnames(xm) #preserve order
 facs = grepl('cf|pf',colnames(xm))
 xm= cbind(xm[,!facs],marginals[,colorder[facs]])
 
-
+lm=colnames(xm)
 true.b[['a']] = data.frame(
   x=min(tdat$a):max(tdat$a),
   #m.eff = predict(tt,newdata=xh))
-  m.eff = xm %*% beta[colnames(xm)])
+  m.eff = xm %*% beta[colnames(xm)],
+  se = sqrt(diag(xm %*% vc[lm,lm] %*% t(xm))))
 
 true.b[['a']]$dim='a'
 
@@ -183,9 +192,11 @@ xm = model.matrix(~.,data=xh,
                   contrasts.arg=list(pf='contr.sum'))
 xm=xm[,2:ncol(xm)]
 
+lm = colnames(xm)
 true.b[['p']] = data.frame(
   x=unique(tdat$p),
-  m.eff = xm %*% beta[colnames(xm)])
+  m.eff = xm %*% beta[colnames(xm)],
+  se = sqrt(diag(xm %*% vc[lm,lm] %*% t(xm))))
 true.b[['p']]$dim='p'
 
 ###c effects
@@ -196,9 +207,11 @@ xh= data.frame(ca= 0,
 xm = model.matrix(~.,data=xh,
                   contrasts.arg = list(cf='contr.sum'))
 xm = xm[,2:ncol(xm)]
+lm = colnames(xm)
 true.b[['c']] = data.frame(
   x=min(tdat$c):max(tdat$c),
-  m.eff = xm %*% beta[colnames(xm)])
+  m.eff = xm %*% beta[colnames(xm)],
+  se=sqrt(diag(xm %*% vc[lm,lm] %*% t(xm))))
 true.b[['c']]$dim='c'
 
 #####
@@ -209,14 +222,21 @@ r.effs = do.call(rbind,true.b) %>%
   mutate(dim_f = factor(dim, levels=c('a','p','c'),
                         labels=c('Age','Period','Cohort')))
 
-effs = draw_sumeffs(effs$sampobj,tol=0.05)
+effs = draw_sumeffs(effs$sampobj,
+                    tol=0.05)
 
 pp = plot(effs)
 
 ##plot comparisons
 partp =  pp +
    geom_line(data=r.effs,
-              aes(x=x,y=m.eff),size=1.1,color='blue',alpha=0.3)
+              aes(x=x,y=m.eff),
+             size=1.1,color='blue',alpha=0.3) +
+  geom_ribbon(data=r.effs,
+              aes(x=x,y=NULL,
+                  ymax=m.eff + 1.96*se,
+                  ymin=m.eff-1.96*se),
+              fill='blue',alpha=0.15)
 
 partp 
 
@@ -231,6 +251,9 @@ fullp = partp +
     theme_classic()
 
 print(fullp + hapc_ribbon)
+
+#################3
+#@
 
 #collect differences (i.e. "S", and test against window breaks...)
 s.a = do.call(rbind,tstdiff(effs))
