@@ -84,7 +84,7 @@ dats = lapply(1:1000,FUN=simdat)
   
 ```
 
-## Effect coding example.
+## 2. Effect coding model.
 
 I calculate the grand mean and estimate a model with effects coding as below.
 
@@ -98,18 +98,25 @@ t.sum = lapply(dats,function(dat)
                    contrasts=list(f1='contr.sum',f2='contr.sum'))
 )
 
-kable(mean(M))
 
 ```
+
+
 
 Here is an example of the results from an effects coded regression.
 
+
+
 ```{r}
 
-kable(coef(summary(t.sum[[1]])),digits=2)
+kable(summary(t.sum[[1]]),digits=2)
 
 ```
+
+
 Using the results of the regression, I calculate the expected means of the variables as described above. Specifically, the intercept plus the estimate is the expected value of the mean. For the omitted category, the estimate is -1 times the sum of all other categories.
+
+
 ```{r}
 
 #calculate mean levels across all categoies from the
@@ -129,6 +136,8 @@ kable(mm)
 ```
 
 When I compare this relative to the observed group-level means, I confirm that it is correct.
+
+
 ```{r}
 
 
@@ -154,6 +163,12 @@ names(c.means) = letters[1:6]
 dd = rbind(c.means,mm)
 rownames(dd) = c('Sliced Means','Means from Calculated from Regression')
 kable(dd)
+```
+
+Finally, using the msm package, it is straightforward to calculate standard errors from the effects coding model.
+
+```{r}
+
 ```
 
 

@@ -7,10 +7,10 @@ library(reshape2)
 library(msm)
 
 #lnum=34 #best one for hapc
-lnum =8 #15 works fine too for hapc!
+lnum =10 #15 works fine too for hapc!
 
-#load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
-load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
+load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
+#load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
 
 
 tdat = simulated$simdat
@@ -30,7 +30,17 @@ tdat = tdat %>%
          p.hf = window(p,winlength=5),
          c.hf = window(c,winlength=3))
 
-hapc = lmer(y~ca + I(ca^2) +
+#because of strucure there are some unused year factors --- these are deleted, here
+tdat$pf = droplevels(tdat$pf)
+#mean center age
+tdat$yc = tdat$y - mean(tdat$y)
+
+#recover breaks
+class(tdat$pf) = c(class(tdat$pf),'window')
+attr(tdat$pf,'breaks') = c(min(tdat$p)-1,
+                           simulated$p.breaks[simulated$p.breaks %in% unique(tdat$p)])
+
+hapc = lmer(yc~ca + I(ca^2) +
               p.hf + c.hf +
               (1|p.hf) + (1|c.hf),
             data = tdat,
@@ -38,6 +48,8 @@ hapc = lmer(y~ca + I(ca^2) +
               p.hf = 'contr.sum',
               c.hf = 'contr.sum'
             ))
+
+convergence = hapc@optinfo$conv$lme4$code
 
 #####################3
 #predict
@@ -63,43 +75,51 @@ hapc.effs = function(mermod,newdat){
 }
 
 
+beta = coef(summary(hapc))
+vc = vcov(hapc)
+
 mna = mean(tdat$ca)
 mnp = window(mean(tdat$p),breaks=attr(tdat$p.hf,'breaks'))
 mnc = window(mean(tdat$c),breaks=attr(tdat$c.hf,'breaks'))
 
-xm.a = data.frame(ca = min(tdat$ca):max(tdat$ca),
-                  p.hf=mnp,
-                  c.hf=mnc
-)
+###a effects -- note max is for the "omitted" category
+p.marginals = prop.table(table(tdat$p.hf))
+names(p.marginals) = paste0('p.hf',1:length(levels(tdat$p.hf)))
+c.marginals = prop.table(table(tdat$c.hf))
+names(c.marginals) = paste0('c.hf',1:length(levels(tdat$c.hf)))
 
-pred = hapc.effs(hapc,xm.a) %>%
-  mutate(x = unique(tdat$a),
-         dim= 'a')
+marginals=c(p.marginals,c.marginals)
 
-xm.p = data.frame(ca = mna,
-                  p.hf=scopedummy(tdat$p.hf,unique.vals=unique(tdat$p)),
-                  c.hf=mnc)
+xh= data.frame(a=min(tdat$a):max(tdat$a),
+               p.hf = mnp,
+               c.hf = mnc) 
 
-pred = rbind(pred,hapc.effs(hapc,xm.p) %>% 
-               mutate(x=unique(tdat$p),
-                      dim='p'))
+marginals = do.call(rbind,lapply(1:nrow(xh),FUN=function(x){return(marginals)}))
+marginals = marginals/2
+
+xh$ca = xh$a-mean(tdat$a); xh$ca2 = xh$ca^2
+xm = model.matrix(~ca + ca2 + p.hf + c.hf,
+                  data=xh,
+                  contrasts.arg = list(c.hf = 'contr.sum',
+                                       p.hf = 'contr.sum'))
+colorder = colnames(xm) #preserve order
+facs = grepl('c.hf|p.hf',colnames(xm))
+xm= cbind(xm[,!facs],marginals[,colorder[facs]])
+
+hapc.b = list()
+
+hapc.b[['a']] = data.frame(
+  x=min(tdat$a):max(tdat$a),
+  #m.eff = predict(tt,newdata=xh))
+  m.eff = xm %*% beta[colnames(xm)])
 
 
-xm.c = data.frame(ca = mna,
-                  p.hf=mnp,
-                  c.hf=scopedummy(tdat$c.hf))
-
-pred = rbind(pred,hapc.effs(hapc,xm.c) %>%
-               mutate(x=unique(tdat$c),
-                      dim='c'))
 
 ##########3
 #real effects
 
-
 #set contrasts option; see http://faculty.nps.edu/sebuttre/home/R/contrasts.html
 
-tdat$yc = tdat$y - mean(tdat$y)
 tt = lm(yc~ca+ca2+pf+cf,data=tdat,
         contrasts=list(pf='contr.sum',
                        cf = 'contr.sum'))
@@ -110,18 +130,28 @@ beta = coef(tt)
 
 
 ###a effects -- note max is for the "omitted" category
+p.marginals = prop.table(table(tdat$pf))
+names(p.marginals) = paste0('pf',1:length(levels(tdat$pf)))
+c.marginals = prop.table(table(tdat$cf))
+names(c.marginals) = paste0('cf',1:length(levels(tdat$cf)))
+
+marginals=c(p.marginals,c.marginals)
 
 xh= data.frame(a=min(tdat$a):max(tdat$a),
                pf = window(mean(tdat$p),breaks=attr(tdat$pf,'breaks')),
                cf = window(mean(tdat$c),breaks=attr(tdat$cf,'breaks'))) 
+
+marginals = do.call(rbind,lapply(1:nrow(xh),FUN=function(x){return(marginals)}))
+marginals = marginals/2
 
 xh$ca = xh$a-mean(tdat$a); xh$ca2 = xh$ca^2
 xm = model.matrix(~ca + ca2 + pf + cf,
                   data=xh,
                   contrasts.arg = list(cf = 'contr.sum',
                                        pf = 'contr.sum'))
+colorder = colnames(xm) #preserve order
 facs = grepl('cf|pf',colnames(xm))
-xm[,facs] = xm[,facs]*.5
+xm= cbind(xm[,!facs],marginals[,colorder[facs]])
 
 
 true.b[['a']] = data.frame(
@@ -161,24 +191,23 @@ true.b[['c']]$dim='c'
 #####
 #plot
 
-r.effs = do.call(rbind,true.b)
+r.effs = do.call(rbind,true.b) %>%
+  arrange(dim) %>%
+  mutate(dim_f = factor(dim,labels=c('Age','Cohort','Period')))
 
 #r.effs = r.effs %>% 
 #  mutate(m.eff = ifelse(dim=='a',m.eff+21,m.eff))
 
 #redraw effects... using effect coding
-effs = draw_sumeffs(effs$sampobj,tol=0.05)
+#effs = draw_sumeffs(effs$sampobj,tol=0.05)
 pp = plot(effs)
-
-ages = merge(pp$data %>% filter(dim=='a'),
-             r.effs %>% filter(dim=='a'),by='x')
-
-plot(ages[,c('Fit','m.eff')])
 
 ##plot comparisons
 partp =  pp +
    geom_line(data=r.effs,
               aes(x=x,y=m.eff),linetype=2)
+
+partp 
 
 fullp = partp + 
    geom_line(data=pred,
@@ -189,54 +218,20 @@ fullp = partp +
 
 print(fullp)
 
+#collect differences (i.e. "S", and test against window breaks...)
+s.a = do.call(rbind,tstdiff(effs))
+attr(tdat$pf,'breaks')
+attr(tdat$cf,'breaks')
 
-#real age
-rage = simulated$effects[1:2]
+#true differences in smae dataframe
+tdelta = r.effs %>% group_by(dim) %>%
+  mutate(real.delta=lead(m.eff) - (m.eff),
+         dfname = paste0(dim,'.',lead(x),'-',x)) %>%
+  select(real.delta,dfname)
 
-#hapc age
-hage = coef(summary(hapc))[2:3,]
-
-#estimate of age from simulated posterior
-
-
-agesim = as.data.frame(t(effs$effects$a))
-agesim$a = as.numeric(colnames(effs$effects$a))
-agesim = melt(agesim,id='a') %>%
-  rename(y=value) %>%
-  mutate(ca = a - mean(a),
-         ca2 = ca^2) %>%
-  dplyr::select(-variable)
-
-wage = coef(summary(lm(y~ca+ca2,data=agesim)))
-
-
-print(rage)
-print(hage)
-print(wage)
-
-
-#############3
-#breaks for sampler...?
-wbreaks = function(dim){
-  tst = effs$effects[[dim]][,order(as.numeric(colnames(effs$effects[[dim]])))]
-  
-  delt = unlist(lapply(1:(ncol(tst)-1),FUN=function(r){
-    rw = min(
-            c(mean(tst[,r] - tst[,r+1]>0),
-              mean(tst[,r] - tst[,r+1]<0)
-              )
-            )
-    names(rw) = colnames(tst)[r]
-    return(rw)
-  }))
-  
-return(delt)
-
-}
-
-brks = lapply(names(effs$effects),wbreaks)
-names(brks) = names(effs$effects)
-
-brks[['p']][as.character(attr(tdat$pf,'breaks'))]
-brks[['c']][as.character(attr(tdat$cf,'breaks'))]
+#tests
+tdelta = merge(tdelta,s.a,by.x='dfname',by.y='row.names')
+quantile(tdelta$real.delta-tdelta$diff,probs=0.5)
+quantile(tdelta$real.delta-tdelta$diff,probs=c(0.975,0.025))
+sum(tdelta$real.delta-tdelta$diff>0)/nrow(tdelta)
 
