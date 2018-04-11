@@ -1,5 +1,4 @@
 
-
 #rm(list=ls())
 source('config~.R')
 
@@ -12,10 +11,10 @@ library(dplyr) #data manipulation
 library(reshape2) # data manipulation
 library(ggplot2) #plotting
 
-#lnum=34 #best one for hapc
-#lnum =10 #15 works fine too for hapc!
+lnum=1 #best one for hapc
+#lnum =36 #15 works fine too for hapc!
 
-#load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
+load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
 #load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
 
 
@@ -41,8 +40,7 @@ tdat$yc = tdat$y - mean(tdat$y)
 
 #recover breaks
 class(tdat$pf) = c(class(tdat$pf),'window')
-attr(tdat$pf,'breaks') = c(min(tdat$p)-1,
-                           simulated$p.breaks[simulated$p.breaks %in% unique(tdat$p)])
+attr(tdat$pf,'breaks') = simulated$p.breaks
 
 #can rescale; doesn't seem to fix convergence
 tdat$cal = tdat$ca/10
@@ -161,7 +159,9 @@ names(p.marginals) = paste0('pf',1:length(levels(tdat$pf)))
 c.marginals = prop.table(table(tdat$cf))
 names(c.marginals) = paste0('cf',1:length(levels(tdat$cf)))
 
-marginals=c(p.marginals,c.marginals)
+#contr.sum deletes last category by default
+marginals=c(p.marginals[1:length(levels(tdat$pf))-1],
+            c.marginals[1:length(levels(tdat$cf))-1])
 
 xh= data.frame(a=min(tdat$a):max(tdat$a),
                pf = window(mean(tdat$p),breaks=attr(tdat$pf,'breaks')),
@@ -171,13 +171,10 @@ marginals = do.call(rbind,lapply(1:nrow(xh),FUN=function(x){return(marginals)}))
 marginals = marginals/2
 
 xh$ca = xh$a-mean(tdat$a); xh$ca2 = xh$ca^2
-xm = model.matrix(~ca + ca2 + pf + cf,
-                  data=xh,
-                  contrasts.arg = list(cf = 'contr.sum',
-                                       pf = 'contr.sum'))
-colorder = colnames(xm) #preserve order
-facs = grepl('cf|pf',colnames(xm))
-xm= cbind(xm[,!facs],marginals[,colorder[facs]])
+xm = model.matrix(~ca + ca2,
+                  data=xh)
+
+xm= cbind(xm,marginals)
 
 lm=colnames(xm)
 true.b[['a']] = data.frame(
@@ -192,7 +189,9 @@ true.b[['a']]$dim='a'
 ###p effects
 xh= data.frame(ca= 0,
                ca2 = 0,
-               pf=scopedummy(tdat$pf,unique.vals=unique(tdat$p)))
+               pf=droplevels(scopedummy(tdat$pf,
+                             unique.vals=unique(tdat$p))))
+
 xm = model.matrix(~.,data=xh,
                   contrasts.arg=list(pf='contr.sum'))
 xm=xm[,2:ncol(xm)]
@@ -231,6 +230,9 @@ effs = draw_sumeffs(effs$sampobj,
                     tol=0.01)
 
 pp = plot(effs)
+
+#dt=pp$data
+
 "
 #commented out while I run the gather
 ##plot comparisons
@@ -261,7 +263,7 @@ hapc_plt =  geom_line(data=pred,
 linecomp = plot(effs,adj.se=FALSE) + hapc_plt + reff_plt
 hapc.comp = ggplot() + hapc_plt + hapc_ribbon + reff_plt + reff_ribbon +
   th + facet_wrap(~dim_f,scales='free_x')
-my.comp = pp + reff_plt + reff_ribbon +
+sws.comp = pp + reff_plt + reff_ribbon +
   th + facet_wrap(~dim_f,scales='free_x')
 cross.comp = pp + hapc_plt + hapc_ribbon
 "
