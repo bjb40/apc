@@ -228,8 +228,8 @@ kable(dummy)</code></pre>
 
 dats = lapply(1:1000,FUN=simdat)</code></pre>
 </div>
-<div id="effect-coding-example." class="section level2">
-<h2>Effect coding example.</h2>
+<div id="effect-coding-model." class="section level2">
+<h2>2. Effect coding model.</h2>
 <p>I calculate the grand mean and estimate a model with effects coding as below.</p>
 <pre class="r"><code>#grand mean
 M=unlist(lapply(dats,function(dat) mean(dat$y)))
@@ -238,73 +238,45 @@ M=unlist(lapply(dats,function(dat) mean(dat$y)))
 t.sum = lapply(dats,function(dat)
                 lm(y~f1+f2,data=dat,
                    contrasts=list(f1='contr.sum',f2='contr.sum'))
-)
-
-kable(mean(M))</code></pre>
-<table>
-<tbody>
-<tr class="odd">
-<td align="right">3.082357</td>
-</tr>
-</tbody>
-</table>
+)</code></pre>
 <p>Here is an example of the results from an effects coded regression.</p>
-<pre class="r"><code>kable(coef(summary(t.sum[[1]])),digits=2)</code></pre>
-<table>
-<thead>
-<tr class="header">
-<th></th>
-<th align="right">Estimate</th>
-<th align="right">Std. Error</th>
-<th align="right">t value</th>
-<th align="right">Pr(&gt;|t|)</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>(Intercept)</td>
-<td align="right">3.11</td>
-<td align="right">0.05</td>
-<td align="right">62.43</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td>f11</td>
-<td align="right">0.44</td>
-<td align="right">0.07</td>
-<td align="right">6.24</td>
-<td align="right">0</td>
-</tr>
-<tr class="odd">
-<td>f12</td>
-<td align="right">-1.81</td>
-<td align="right">0.07</td>
-<td align="right">-25.73</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td>f21</td>
-<td align="right">-3.45</td>
-<td align="right">0.07</td>
-<td align="right">-48.96</td>
-<td align="right">0</td>
-</tr>
-<tr class="odd">
-<td>f22</td>
-<td align="right">-1.31</td>
-<td align="right">0.07</td>
-<td align="right">-18.60</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td>Using the resu</td>
-<td align="right">lts of the</td>
-<td align="right">regression, I</td>
-<td align="right">calculate</td>
-<td align="right">the expected means of the variables as described above. Specifically, the intercept plus the estimate is the expected value of the mean. For the omitted category, the estimate is -1 times the sum of all other categories.</td>
-</tr>
-</tbody>
-</table>
+<pre class="r"><code>library(stargazer)</code></pre>
+<pre><code>## Warning: package 'stargazer' was built under R version 3.4.3</code></pre>
+<pre><code>## 
+## Please cite as:</code></pre>
+<pre><code>##  Hlavac, Marek (2018). stargazer: Well-Formatted Regression and Summary Statistics Tables.</code></pre>
+<pre><code>##  R package version 5.2.1. https://CRAN.R-project.org/package=stargazer</code></pre>
+<pre class="r"><code>stargazer(t.sum[[1]],type='text')</code></pre>
+<pre><code>## 
+## ===============================================
+##                         Dependent variable:    
+##                     ---------------------------
+##                                  y             
+## -----------------------------------------------
+## f11                          0.410***          
+##                               (0.068)          
+##                                                
+## f12                          -1.671***         
+##                               (0.068)          
+##                                                
+## f21                          -3.330***         
+##                               (0.068)          
+##                                                
+## f22                          -1.306***         
+##                               (0.068)          
+##                                                
+## Constant                     3.116***          
+##                               (0.048)          
+##                                                
+## -----------------------------------------------
+## Observations                    900            
+## R2                             0.863           
+## Adjusted R2                    0.862           
+## Residual Std. Error      1.439 (df = 895)      
+## F Statistic         1,407.061*** (df = 4; 895) 
+## ===============================================
+## Note:               *p&lt;0.1; **p&lt;0.05; ***p&lt;0.01</code></pre>
+<p>Using the results of the regression, I calculate the expected means of the variables as described above. Specifically, the intercept plus the estimate is the expected value of the mean. For the omitted category, the estimate is -1 times the sum of all other categories.</p>
 <pre class="r"><code>#calculate mean levels across all categoies from the
 sm2 = do.call(rbind,lapply(t.sum,coef))
 mean.code = data.frame(
@@ -322,27 +294,27 @@ kable(mm)</code></pre>
 <tbody>
 <tr class="odd">
 <td align="left">a</td>
-<td align="right">3.5834062</td>
+<td align="right">3.5817645</td>
 </tr>
 <tr class="even">
 <td align="left">b</td>
-<td align="right">1.3335794</td>
+<td align="right">1.3341992</td>
 </tr>
 <tr class="odd">
 <td align="left">c</td>
-<td align="right">4.3300851</td>
+<td align="right">4.3281391</td>
 </tr>
 <tr class="even">
 <td align="left">d</td>
-<td align="right">-0.2484856</td>
+<td align="right">-0.2520296</td>
 </tr>
 <tr class="odd">
 <td align="left">e</td>
-<td align="right">1.7487782</td>
+<td align="right">1.7446645</td>
 </tr>
 <tr class="even">
 <td align="left">f</td>
-<td align="right">7.7467782</td>
+<td align="right">7.7514678</td>
 </tr>
 </tbody>
 </table>
@@ -384,24 +356,63 @@ kable(dd)</code></pre>
 <tbody>
 <tr class="odd">
 <td>Sliced Means</td>
-<td align="right">3.583406</td>
-<td align="right">1.333579</td>
-<td align="right">4.330085</td>
-<td align="right">-0.2484856</td>
-<td align="right">1.748778</td>
-<td align="right">7.746778</td>
+<td align="right">3.581764</td>
+<td align="right">1.334199</td>
+<td align="right">4.328139</td>
+<td align="right">-0.2520296</td>
+<td align="right">1.744665</td>
+<td align="right">7.751468</td>
 </tr>
 <tr class="even">
 <td>Means from Calculated from Regression</td>
-<td align="right">3.583406</td>
-<td align="right">1.333579</td>
-<td align="right">4.330085</td>
-<td align="right">-0.2484856</td>
-<td align="right">1.748778</td>
-<td align="right">7.746778</td>
+<td align="right">3.581764</td>
+<td align="right">1.334199</td>
+<td align="right">4.328139</td>
+<td align="right">-0.2520296</td>
+<td align="right">1.744665</td>
+<td align="right">7.751468</td>
 </tr>
 </tbody>
 </table>
+<p>Finally, using the msm package, it is straightforward to calculate standard errors from the effects coding model.</p>
+<pre class="r"><code>#https://stats.idre.ucla.edu/r/faq/how-can-i-estimate-the-standard-error-of-transformed-regression-parameters-in-r-using-the-delta-method/
+
+#collect betas from one model
+beta = coef(t.sum[[1]])
+#collect variance-covariance matrix
+vc = vcov(t.sum[[1]])
+
+#S.E. of mean (with predictions at 1 (all others at 0))
+#unit tests
+#deltamethod(~x1+x2,beta,vc) #se for factor 1
+#deltamethod(~x1-x2-x3,beta,vc) #se for omitted factor
+#sqrt(t(c(1,1)) %*% vc[1:2,1:2] %*% c(1,1)) #se for factor 1
+#sqrt(t(c(1,-1,-1)) %*% vc[1:3,1:3] %*% c(1,-1,-1)) #se for omitted factor
+
+#f.sum = cbind(rep(1,3),contr.sum(3))
+#pred = f.sum %*% beta[1:3] 
+#sqrt(diag(f.sum %*% vc[1:3,1:3] %*% t(f.sum)))
+
+#set up x matrix
+xm = cbind(contr.sum(3),matrix(0,3,2))
+xm = rbind(xm,cbind(matrix(0,3,2),contr.sum(3)))
+xm = cbind(rep(1,6),xm)
+
+pred = data.frame(
+  mean=xm %*% beta,
+  se = sqrt(diag((xm %*% vc %*% t(xm))))
+)</code></pre>
+<pre><code>## Warning in data.row.names(row.names, rowsi, i): some row.names duplicated:
+## 4,5,6 --&gt; row.names NOT used</code></pre>
+<pre class="r"><code>pred$factor = factor(letters[1:6])
+
+library(ggplot2)
+
+ggplot(pred,aes(x=factor,y=mean,ymax=mean+1.96*se,ymin=mean-1.96*se))+
+  geom_bar(stat='identity') +
+  geom_errorbar(width=0,size=2) +
+  theme_classic()</code></pre>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAAD1BMVEUAAAAzMzNNTU1ZWVn///8OVaI1AAAACXBIWXMAAB2HAAAdhwGP5fFlAAAgAElEQVR4nO3d4XqT2Y6E0ZDh/q95xgNpQsi2tsqSS9/2u340hz7gTpVFPdBx3G8/AQCSN/cHAABXxYACgIgBBQARAwoAIgYUAEQMKACIGFAAEDGgACBiQAFAxIACgIgBBQARAwoAIgYUAESlA/rGHAN4IQwoAIgYUAAQMaAAIGJAAUDEgAKAiAEFABEDCgAiBhQARAwoAIgYUAAQMaAAIGJAAUDEgAKAiAEFABEDCgAiBhQARAwoAIgYUAAQMaAAIGJAAUDEgAKAiAEFABEDCgAidfLeb/55MAYUwAsRJ+/9/bsFZUABvBJt8n5t5z8LyoACeCXqgH7+5s+DMaAAXggDCgAiBhQARPInkX7+tZ8/fmFAAbyQopcxMaAAXg8vYwIAEf8OFABE0uT9N5xfFpQBBfBKGFAAEDGgACBiQAFAxCeRAEAkv5nId69jYkABNHv7w/2h8H6gAK7liAH9/sEGBAJwNAYUAEQMKACIGFAAEDGgACBiQAFAxIACgIgBBQARAwoAIgYUAEQMKACIGFAAEDGgACBiQAFAxIACeAH/0+LTgLY8fioiAwqgR8u+MaAAXkHLvjGgAF5By74xoABeQcu+MaAAXkHLvjGgAF5By74xoABeQcu+MaAAXkHLvjGgAF5By74xoABeQcu+MaAAXkHLvjGgAF5By74xoABeQcu+MaAAXkHLvjGgAF5By761S0VkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhHlyXu/+fpgDCiAD+4p1KQiipP3/tuXB2NAAXxwT6EmFVGbvN/T+XVBGVAA/3FPoSYVUR3Qv7/9eDAGFMAH9xRqUhEfG9CvD8aAAvjgnkJNKqI0eYv9ZEAB/OGeQk0qojygf38K6ccvDCiAD+4p1KQiqgP65bPwDCiAL9xTqElFFAf047PwXx6MAQXwwT2FmlREdUA//sffD8aAAvjgnkJNKuJjn0RiQAGsuKdQk4rIgALo4Z5CTSoiAwqgh3sKNamIfCUSgB7uKdSkIj74tfBfHowBBfDBPYWaVMTH3o3p64MxoAA+uKdQk4qoTt53+8mAAvjDPYWaVETekR5AD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFEAP9xRqUhEZUAA93FOoSUVkQAH0cE+hJhWRAQXQwz2FmlREBhRAD/cUalIRGVAAPdxTqElFZEAB9HBPoSYVkQEF0MM9hZpURAYUQA/3FGpSERlQAD3cU6hJRWRAAfRwT6EmFZEBBdDDPYWaVEQGFPXe/nB/KDByT6EmFZEBRT0GFDfuKdSkIjKgqMeA4sY9hZpURAYU9RhQ3LinUJOKyICiHgOKG/cUalIRGVDUY0Bx455CTSoiA4p6DChu3FOoSUVkQFGPAcWNewo1qYgMKOoxoLhxT6EmFZEBRT0GFDfuKdSkIjKgqMeA4sY9hZpURAYU9RhQ3LinUJOKyICiHgOKG/cUalIRGVDUY0Bx455CTSoiA4p6DChu3FOoSUVkQF9bzwl+GtCWx3e3hj0tT367VEQG9LX1nCADipuWJ79dKiID+tp6TpABxU3Lk98uFZEBfW09J8iA4qblyW+XisiAvraeE2RAcdPy5LdLRWRAX1vPCTKguGl58tulIjKgr63nBBlQ3LQ8+e1SERnQ19Zzggwoblqe/HapiAzoa+s5QQYUNy1PfrtURAb0tfWcIAOKm5Ynv10qIgP62npOkAHFTcuT3y4VkQF9bT0nyIDipuXJb5eKyIC+tp4TZEBx0/Lkt0tFZEBfW88JMqC4aXny26UiMqCvrecEGVDctDz57VIRGdDX5j5Wjbs17HHfiSYVkQF9be5j1bhbwx73nWhSERnQ1+Y+Vo27Nexx34kmFZEBfW3uY9W4W8Me951oUhEZ0NfmPlaNuzXscd+JJhWRAX1t7mPVuFvDHvedaFIRGdDX5j5Wjbs17HHfiSYVkQF9be5j1bhbwx73nWhSERnQ1+Y+Vo27Nexx34kmFXE5eW+f7T4YA3o17mPVuFvDHvedaFIRV5P3xoC+BPexatytYY/7TjSpiIvJe2NAX4P7WDXu1rDHfSeaVMT1gAp9MaCX4z5Wjbs17HHfiSYVcTmgSl8M6OW4j1Xjbg173HeiSUV8ZEDf35WfhUncx6pxt4Y97jvRpCI+MKDvDOj1uY9V424Ne9x3oklFXH8WPvqZ7wzoAdzHqnG3hj3uO9GkIt55HWjwMxnQE7iPVeNuDXvcd6JJRZRfxvR/68mAXp/7WDXu1rDHfSeaVER1QN8Z0CO4j1Xjbg173HeiSUXUB/Svz8L/+IUBvRr3sWrcrWGP+040qYji5P3/djKg1+c+Vo27Nexx34kmFbFoQH8/GAN6Ne5j1bhbwx73nWhSEbXJ+zWdDOj1uY9V424Ne9x3oklF3Jq8rz/onQE9hftYNe7WsMd9J5pUROn9QN//+PJzUv9s+LmPVeNuDXvcd6JJRZTeD5QBPYb7WDXu1rDHfSeaVMStAV38GP4If33uY9W4W8Me951oUhHvvh/on798iwG9PvexatytYY/7TjSpiHffjenzX7/BgF6f+1g17tawx30nmlTE+29nd39BGdDrcx+rxt0a9rjvRJOK+MiArn4WrsN9rBp3a9jjvhNNKiID+trcx6pxt4Y97jvRpCIyoK/Nfawad2vY474TTSri/Xek//9PxvOfNT6Y+1g17tawx30nmlTEe68D/fNq0N0HY0Cvxn2sGndr2OO+E00q4r0v5fz5saDbD8aAXo37WDXu1rDHfSeaVMT15P33h/j9VWRAL8d9rBp3a9jjvhNNKmLp5DGgl+M+Vo27Nexx34kmFZEBfW3uY9W4W8Me951oUhHvTN7vzyNlHowBvRr3sWrcrWGP+040qYjB+4FmXsTEgF6Q+1g17tawx30nmlTE4O3scp9FYkAvx32sGndr2OO+E00q4p0B/e/t7BjQc7mPVeNuDXvcd6JJRYzfD5SvRDqZ+1g17tawx30nmlTEjfcD5WvhD+Y+Vo27Nexx34kmFZEBfW3uY9W4W8Me951oUhEZ0NfmPlaNuzXscd+JJhWRAX1t7mPVuFvDHvedaFIR+STSa3Mfq8bdGva470STihi+jGn860Dj//wy1tzHqnG3hj3uO9GkIgZfiXSBt7NjQB/hPlaNuzXscd+JJhXx3tvZpXeJAb0c97Fq3K1hj/tONKmIwZuJ5FaJAb0c97Fq3K1hj/tONKmI1387Owb0Ee5j1bhbwx73nWhSERnQ1+Y+Vo27Nexx34kmFXHrk0ijX8bEgD7Cfawad2vY474TTSpi8HZ2DOjh3MeqcbeGPe470aQirl9Iz4C+AvexatytYY/7TjSpiHe/EimLAb0c97Fq3K1hj/tONKmId78WPosBvRz3sWrcrWGP+040qYgM6GtzH6vG3Rr2uO9Ek4rIgL4297Fq3K1hj/tONKmI68/CC30xoJfjPlaNuzXscd+JJhXx7rsxZTGgl+M+Vo27Nexx34kmFZEX0r8297Fq3K1hj/tONKmIz3whfU/cTx9my+On6ryclsrauVvDHvedaFIRn/lC+p64DOgjWipr524Ne9x3oklFfOYL6XviMqCPaKmsnbs17HHfiSYV8ZkvY+qJy4A+oqWydu7WsMd9J5pURAY0ohRxHS2VtXO3hj3uO9GkIjKgEaWI62iprJ27Nexx34kmFfGZL6TvicuAPqKlsnbu1rDHfSeaVMQ7rwPN98WAXk5LZe3crWGP+040qYi8jCmSqvNyWipr524Ne9x3oklFZEAjqTovp6Wydu7WsMd9J5pURAY0kqrzcloqa+duDXvcd6JJRXzmf5WzJy4D+oiWytq5W8Me951oUhEZ0EhlQfO0VNbO3Rr2uO9Ek4rIgEYqC5qnpbJ27tawx30nmlREBjRSWdA8LZW1c7eGPe470aQiXn9Au1UWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx34kmFZEBjVQWNI+7XY27Nexx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" width="672" /></p>
 <p>Citations</p>
 <div id="refs" class="references">
 <div id="ref-hardy_regression_1993">

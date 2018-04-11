@@ -7,10 +7,10 @@ library(reshape2)
 library(msm)
 
 #lnum=34 #best one for hapc
-lnum =10 #15 works fine too for hapc!
+lnum =24 #15 works fine too for hapc!
 
-load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
-#load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
+#load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
+load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
 
 
 tdat = simulated$simdat
@@ -40,7 +40,7 @@ class(tdat$pf) = c(class(tdat$pf),'window')
 attr(tdat$pf,'breaks') = c(min(tdat$p)-1,
                            simulated$p.breaks[simulated$p.breaks %in% unique(tdat$p)])
 
-hapc = lmer(yc~ca + I(ca^2) +
+hapc = lmer(yc~ca + ca2 +
               p.hf + c.hf +
               (1|p.hf) + (1|c.hf),
             data = tdat,
@@ -52,30 +52,9 @@ hapc = lmer(yc~ca + I(ca^2) +
 convergence = hapc@optinfo$conv$lme4$code
 
 #####################3
-#predict
+#predict -- HAPC
 
-hapc.effs = function(mermod,newdat){
-  #mermod is fitted model, newdat is new data
-  
-  
-  
-  effs=simulate(mermod,
-                nsim=100,
-                use.u = TRUE,
-                newdat=newdat,
-                allow.new.levels=TRUE)
-
-  
-  pred = data.frame(fit=apply(effs,1,mean),
-                    ll = apply(effs,1,quantile,prob=0.025),
-                    ul = apply(effs,1,quantile,prob=0.975))
-  
-  
-  return(pred)
-}
-
-
-beta = coef(summary(hapc))
+beta = coef(summary(hapc))[,'Estimate']
 vc = vcov(hapc)
 
 mna = mean(tdat$ca)
@@ -106,14 +85,49 @@ colorder = colnames(xm) #preserve order
 facs = grepl('c.hf|p.hf',colnames(xm))
 xm= cbind(xm[,!facs],marginals[,colorder[facs]])
 
-hapc.b = list()
+pred = list()
 
-hapc.b[['a']] = data.frame(
+pred[['a']] = data.frame(
   x=min(tdat$a):max(tdat$a),
   #m.eff = predict(tt,newdata=xh))
-  m.eff = xm %*% beta[colnames(xm)])
+  m.eff = xm %*% beta[colnames(xm)],
+  se= sqrt(diag(xm %*% vc[colnames(xm),colnames(xm)] %*% t(xm))))
 
+pred[['a']]$dim = 'a'
 
+###p effects
+xh= data.frame(ca= 0,
+               ca2 = 0,
+               p.hf=scopedummy(tdat$p.hf,unique.vals=unique(tdat$p)))
+xm = model.matrix(~.,data=xh,
+                  contrasts.arg=list(p.hf='contr.sum'))
+xm=xm[,2:ncol(xm)]
+
+pred[['p']] = data.frame(
+  x=unique(tdat$p),
+  m.eff = xm %*% beta[colnames(xm)],
+  se= diag(xm %*% vc[colnames(xm),colnames(xm)] %*% t(xm))
+  )
+pred[['p']]$dim='p'
+
+###c effects
+xh= data.frame(ca= 0,
+               ca2 = 0,
+               c.hf=scopedummy(tdat$c.hf))
+xm = model.matrix(~.,data=xh,
+                  contrasts.arg = list(c.hf='contr.sum'))
+xm = xm[,2:ncol(xm)]
+pred[['c']] = data.frame(
+  x=min(tdat$c):max(tdat$c),
+  m.eff = xm %*% beta[colnames(xm)],
+  se = diag(xm %*% vc[colnames(xm),colnames(xm)] %*% t(xm))
+  )
+pred[['c']]$dim='c'
+
+pred = do.call(rbind,pred) %>%
+  arrange(dim) %>%
+  mutate(dim_f = factor(dim, levels=c('a','p','c'),
+                        labels=c('Age','Period','Cohort')))
 
 ##########3
 #real effects
@@ -127,7 +141,6 @@ true.b =list()
 beta = coef(tt)
 
 #rename columns of beta ...
-
 
 ###a effects -- note max is for the "omitted" category
 p.marginals = prop.table(table(tdat$pf))
@@ -193,30 +206,31 @@ true.b[['c']]$dim='c'
 
 r.effs = do.call(rbind,true.b) %>%
   arrange(dim) %>%
-  mutate(dim_f = factor(dim,labels=c('Age','Cohort','Period')))
+  mutate(dim_f = factor(dim, levels=c('a','p','c'),
+                        labels=c('Age','Period','Cohort')))
 
-#r.effs = r.effs %>% 
-#  mutate(m.eff = ifelse(dim=='a',m.eff+21,m.eff))
+effs = draw_sumeffs(effs$sampobj,tol=0.05)
 
-#redraw effects... using effect coding
-#effs = draw_sumeffs(effs$sampobj,tol=0.05)
 pp = plot(effs)
 
 ##plot comparisons
 partp =  pp +
    geom_line(data=r.effs,
-              aes(x=x,y=m.eff),linetype=2)
+              aes(x=x,y=m.eff),size=1.1,color='blue',alpha=0.3)
 
 partp 
 
+hapc_ribbon =    geom_ribbon(data = pred,
+                             aes(x=x,y=m.eff,
+                                 ymax=m.eff+1.96*se,
+                                 ymin=m.eff-1.96*se),alpha=0.1) 
+
 fullp = partp + 
    geom_line(data=pred,
-             aes(x=x,y=fit),linetype=3) +
-   geom_ribbon(data = pred,
-               aes(x=x,y=fit,ymax=ul,ymin=ll),alpha=0.1) +
+             aes(x=x,y=m.eff),linetype=3) +
     theme_classic()
 
-print(fullp)
+print(fullp + hapc_ribbon)
 
 #collect differences (i.e. "S", and test against window breaks...)
 s.a = do.call(rbind,tstdiff(effs))
