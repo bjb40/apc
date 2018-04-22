@@ -11,10 +11,9 @@ library(dplyr) #data manipulation
 library(reshape2) # data manipulation
 library(ggplot2) #plotting
 
-lnum=1 #best one for hapc
-#lnum =36 #15 works fine too for hapc!
+#lnum =210 #15 works fine too for hapc .. 36 c
 
-load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
+#load(paste0(outdir,'simdata_hapc/sim',lnum,'.RData'))
 #load(paste0(outdir,'simdata1/sim',lnum,'.RData'))
 
 
@@ -107,7 +106,7 @@ marginals=c(p.marginals,c.marginals)
 xh= data.frame(a=min(tdat$a):max(tdat$a)) 
 
 marginals = do.call(rbind,lapply(1:nrow(xh),FUN=function(x){return(marginals)}))
-marginals = marginals/2
+#marginals = marginals/2
 
 xh$ca = xh$a-mean(tdat$a); xh$ca2 = xh$ca^2
 xm = model.matrix(~ca + ca2,
@@ -168,7 +167,7 @@ xh= data.frame(a=min(tdat$a):max(tdat$a),
                cf = window(mean(tdat$c),breaks=attr(tdat$cf,'breaks'))) 
 
 marginals = do.call(rbind,lapply(1:nrow(xh),FUN=function(x){return(marginals)}))
-marginals = marginals/2
+#marginals = marginals/2
 
 xh$ca = xh$a-mean(tdat$a); xh$ca2 = xh$ca^2
 xm = model.matrix(~ca + ca2,
@@ -369,5 +368,15 @@ quantile(tdelta$real.delta-tdelta$diff,probs=0.5)
 quantile(tdelta$real.delta-tdelta$diff,probs=c(0.975,0.025))
 sum(tdelta$real.delta-tdelta$diff>0)/nrow(tdelta)
 "
+#########3
+#BIC analysis
+
+sws.bic = mean(effs$fit$bic)
+hapc.bic = BIC(hapc)
+true.bic = BIC(tt)
+
+BF.sws = exp(sws.bic - true.bic)/2
+BF.hapc = exp(hapc.bic - true.bic)/2 
+BF = exp(sws.bic - hapc.bic)/2
 
 print('done')

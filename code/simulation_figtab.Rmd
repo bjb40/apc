@@ -1,0 +1,38 @@
+---
+title: "Simulation Tables and Images"
+author: "Bryce Bartlett"
+date: "April 19, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview and source of data.
+
+This document generates tables and images from simulation experiments. These consitute several hundred simulations; it is impractical to include all the code in these devices.
+
+Generally speaking, the approach is outlined and described in the draft paper. From a practical perspective, there are a number of files that were used on the sociology server to generate these simulations (these can be consolidated). Here is an overview of the files used:
+
+* simulator.R; this file "ran" the simulations. First, it genrated a 
+
+* 
+
+
+
+## Simulation Results 
+
+
+| p.blocks|p.type     | prop_aws| simulations| c.blocks|c.type     | prop_aws1| simulations1|
+|--------:|:----------|--------:|-----------:|--------:|:----------|---------:|------------:|
+|        3|ar1        |     0.96|          45|        3|ar1        |      0.93|           45|
+|        3|random     |     1.00|          15|        3|random     |      1.00|           15|
+|        3|randomwalk |     0.87|          15|        3|randomwalk |      0.80|           15|
+|        5|ar1        |     0.87|          45|        5|ar1        |      0.84|           45|
+|        5|random     |     0.93|          15|        5|random     |      1.00|           15|
+|        5|randomwalk |     0.60|          15|        5|randomwalk |      0.80|           15|
+|       10|ar1        |     0.82|          44|       10|ar1        |      0.80|           44|
+|       10|random     |     0.87|          15|       10|random     |      0.93|           15|
+|       10|randomwalk |     0.73|          15|       10|randomwalk |      0.67|           15|
+
