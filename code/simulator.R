@@ -2,8 +2,8 @@
 
 #####check for and create simulations folder
 source('config~.R')
-if(!dir.exists(paste0(outdir,'simdata1/'))){
-  dir.create(paste0(outdir,'simdata1/'))
+if(!dir.exists(paste0(outdir,'simdata2/'))){
+  dir.create(paste0(outdir,'simdata2/'))
 }
 
 ####
@@ -30,6 +30,8 @@ simtable = simtable %>%
          c.autocorr=ifelse(c.type !='ar1',NA,c.autocorr))
 
 simtable=unique(simtable)
+simtable$simnumber = 1:nrow(simtable)
+
 
 simtable$nsim = as.numeric(NA)
 simtable$ol = as.numeric(NA)
@@ -37,6 +39,8 @@ simtable$rrmse = as.numeric(NA)
 simtable$srmse = as.numeric(NA) #ratio of calculated rmse to est rmse
 simtable$p.catch = as.numeric(NA)
 simtable$c.catch = as.numeric(NA)
+
+
 #1:nrow(simtable)
 for(draw in 1:5){
   simdims = simtable[draw,]
@@ -51,6 +55,8 @@ for(draw in 1:5){
   simtable[draw,'srmse'] = mean(effs$fit$sigma)
   simtable[draw,'p.catch'] = 1-p.miss
   simtable[draw,'c.catch'] = 1-c.miss
+  simtable[draw,'conv'] = conv
+  #sum(unlist(lapply(tstdiff(effs),nrow)))
   
   save(list = c('effs','simulated'),
        file=paste0(outdir,'simdata1/sim',draw,'.RData'))

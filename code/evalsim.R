@@ -5,13 +5,13 @@
 
 est = apcsamp(dat=tdat,dv='y',
               cores=4,method='ml',
-              chains=4,samples=250)
+              chains=4,samples=100)
+
+conv = max(convergence(est)[,1])
 
 #summary(est)
 
-use.marginal=TRUE
-
-effs = draw_effs(est,tol=0.01,marginal=use.marginal)
+effs = draw_effs(est,tol=0.01)
 
 
 #model is identifiable!! (can check directly from betas..., but using scopedummy and predict)
@@ -67,6 +67,10 @@ pp = plot(effs)
 
 mm = merge(r.effs,pp$data,by=c('dim','x')) %>%
   mutate(ol=ifelse(m.eff>ul & m.eff<ll,TRUE,FALSE))
+
+ggplot(mm,aes(x=x,y=Fit)) +
+  geom_line() + geom_line(aes(y=m.eff)) +
+  facet_wrap(~dim_f,scales='free_x')
 
 ##############
 #calculate breaks
